@@ -16,9 +16,17 @@ pub fn is_secureboot_enabled() -> bool {
         .any(|line| line.contains("Secure Boot:") && line.contains("Enabled"))
 }
 
-/// Whether the SecureBoot Setup button should be enabled (not hidden -
-/// visibility is gated separately on Limine not being installed yet).
+/// Determine whether the SecureBoot Setup button should be enabled.
+///
+/// Returns `Ok(())` when setup is still applicable (Limine not yet active,
+/// SecureBoot not already enabled). Returns `Err` with a user-facing reason
+/// otherwise, suitable for a disabled-button tooltip - the button is always
+/// visible, never hidden, matching `limine_switch_availability`'s
+/// disable-with-tooltip convention.
 pub fn secureboot_setup_availability() -> Result<(), &'static str> {
+    if super::is_package_installed("limine") {
+        return Err("Limine is already active - nothing to set up.");
+    }
     if is_secureboot_enabled() {
         return Err("SecureBoot is already enabled.");
     }

@@ -3,6 +3,8 @@
 //! Command-line client for testing the authentication daemon.
 
 use clap::Parser;
+use std::sync::Arc;
+use tokio::sync::Notify;
 use xero_auth::shared::is_daemon_running;
 use xero_auth::Client;
 
@@ -49,6 +51,25 @@ async fn main() {
         }
     };
 
+    // Installing these handlers overrides the default terminate-immediately
+    // disposition, so SIGTERM/SIGINT (sent by the GUI's Cancel button) instead
+    // forward a Cancel to the daemon and wait for it to actually stop the
+    // privileged command, rather than just killing this relay process and
+    // leaving the real (root-owned) command running orphaned.
+    let cancel = Arc::new(Notify::new());
+    let cancel_for_signals = cancel.clone();
+    tokio::spawn(async move {
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to register SIGTERM handler");
+        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
+            .expect("Failed to register SIGINT handler");
+        tokio::select! {
+            _ = sigterm.recv() => {}
+            _ = sigint.recv() => {}
+        }
+        cancel_for_signals.notify_one();
+    });
+
     let exit_code = match client
         .execute(
             &args.program,
@@ -57,6 +78,7 @@ async fn main() {
             None,
             |line| print!("{}", line),
             |line| eprint!("{}", line),
+            cancel,
         )
         .await
     {

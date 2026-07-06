@@ -76,7 +76,12 @@ ESP_SOURCE=$(findmnt -n -o SOURCE "$ESP")
 ESP_DISK=$(lsblk -no PKNAME "$ESP_SOURCE" | head -n1)
 ESP_PART=$(lsblk -no PARTN "$ESP_SOURCE")
 
-if [[ -n "$ESP_DISK" && -n "$ESP_PART" ]]; then
+# Idempotent: skip creation if this exact loader path is already registered
+# (matched by content, not label) - re-running this script must not pile up
+# duplicate "Limine Bootloader" firmware boot entries.
+if efibootmgr -v 2>/dev/null | grep -qi 'EFI\\limine\\BOOTX64\.EFI'; then
+  echo "Limine EFI boot entry already registered, skipping."
+elif [[ -n "$ESP_DISK" && -n "$ESP_PART" ]]; then
   efibootmgr --create --disk "/dev/${ESP_DISK}" --part "$ESP_PART" \
     --loader '\EFI\limine\BOOTX64.EFI' --label 'Limine Bootloader' --unicode
 else

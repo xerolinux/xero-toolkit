@@ -274,8 +274,9 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
             then GRUB and everything depending on it (grub-hooks, os-prober, update-grub, if present) will be \
             removed along with all configs and themes.\n\n\
             Limine and limine-mkinitcpio-hook will then be installed and activated, GRUB's old firmware boot entry \
-            removed, the boot menu trimmed to just kernels and real other-OS entries, and the XeroLinux boot \
-            splash wallpaper applied.\n\n\
+            removed, the boot menu trimmed to just kernels and real other-OS entries, the XeroLinux boot splash \
+            wallpaper applied, and the EFI system partition cleaned of orphaned kernels/backups to keep its usage \
+            to a minimum.\n\n\
             <span foreground=\"red\" weight=\"bold\">A reboot is required</span> after this completes.",
             move || {
                 let script = crate::config::paths::scripts()
@@ -290,6 +291,11 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
 
                 let wallpaper_script = crate::config::paths::scripts()
                     .join("apply_limine_wallpaper.sh")
+                    .to_string_lossy()
+                    .into_owned();
+
+                let cleanup_script = crate::config::paths::scripts()
+                    .join("cleanup_limine_esp.sh")
                     .to_string_lossy()
                     .into_owned();
 
@@ -340,6 +346,14 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
                             .description("Applying XeroLinux boot splash wallpaper...")
                             .build(),
                     )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("bash")
+                            .args(&[&cleanup_script])
+                            .description("Cleaning up EFI system partition...")
+                            .build(),
+                    )
                     .build();
 
                 task_runner::run(
@@ -354,8 +368,6 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
 
 fn setup_secureboot_setup(page_builder: &Builder, window: &ApplicationWindow) {
     let btn_secureboot_setup = extract_widget::<gtk4::Button>(page_builder, "btn_secureboot_setup");
-
-    btn_secureboot_setup.set_visible(!core::is_package_installed("limine"));
 
     match core::secureboot_setup_availability() {
         Ok(()) => {

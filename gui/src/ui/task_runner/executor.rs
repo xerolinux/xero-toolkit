@@ -10,7 +10,6 @@ use super::command::{Command, CommandResult, CommandType, TaskStatus};
 use super::widgets::TaskRunnerWidgets;
 use crate::core;
 use crate::core::daemon::get_xero_auth_path;
-use gtk4::gio;
 use gtk4::glib;
 use log::{error, info, warn};
 use std::cell::RefCell;
@@ -23,7 +22,9 @@ pub struct RunningContext {
     pub commands: Rc<Vec<Command>>,
     pub index: usize,
     pub cancelled: Rc<RefCell<bool>>,
-    pub current_process: Rc<RefCell<Option<gio::Subprocess>>>,
+    /// PID of the currently running child process, if any - lets the
+    /// Cancel button send it a real signal instead of just waiting.
+    pub current_pid: Rc<RefCell<Option<u32>>>,
     exit_result: RefCell<Option<CommandResult>>,
 }
 
@@ -34,14 +35,14 @@ impl RunningContext {
         commands: Rc<Vec<Command>>,
         index: usize,
         cancelled: Rc<RefCell<bool>>,
-        current_process: Rc<RefCell<Option<gio::Subprocess>>>,
+        current_pid: Rc<RefCell<Option<u32>>>,
     ) -> Rc<Self> {
         Rc::new(Self {
             widgets,
             commands,
             index,
             cancelled,
-            current_process,
+            current_pid,
             exit_result: RefCell::new(None),
         })
     }
@@ -64,7 +65,7 @@ impl RunningContext {
         };
 
         // Clear current process
-        self.current_process.borrow_mut().take();
+        self.current_pid.borrow_mut().take();
 
         // Check if canceled
         if *self.cancelled.borrow() {
@@ -88,7 +89,7 @@ impl RunningContext {
                     self.commands.clone(),
                     self.index + 1,
                     self.cancelled.clone(),
-                    self.current_process.clone(),
+                    self.current_pid.clone(),
                 );
             }
             CommandResult::Failure { exit_code } => {
@@ -125,7 +126,7 @@ pub fn execute_commands(
     commands: Rc<Vec<Command>>,
     index: usize,
     cancelled: Rc<RefCell<bool>>,
-    current_process: Rc<RefCell<Option<gio::Subprocess>>>,
+    current_pid: Rc<RefCell<Option<u32>>>,
 ) {
     if *cancelled.borrow() {
         // If there's a current task being processed, mark it as canceled
@@ -176,7 +177,7 @@ pub fn execute_commands(
         commands.clone(),
         index,
         cancelled.clone(),
-        current_process.clone(),
+        current_pid.clone(),
     );
 
     // Display command header
@@ -215,8 +216,8 @@ pub fn execute_commands(
 
     // Store child process for cancellation
     use std::sync::Mutex;
+    *current_pid.borrow_mut() = Some(child.id());
     let child_arc = Arc::new(Mutex::new(Some(child)));
-    *current_process.borrow_mut() = None; // Clear gio subprocess reference
 
     // Set up result storage
     let result_arc: Arc<Mutex<Option<CommandResult>>> = Arc::new(Mutex::new(None));

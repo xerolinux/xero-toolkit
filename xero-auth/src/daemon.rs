@@ -182,12 +182,19 @@ fn spawn_signal_handler(shutdown: Arc<AtomicBool>) {
 }
 
 async fn handle_client(
-    mut stream: UnixStream,
+    stream: UnixStream,
     shutdown: Arc<AtomicBool>,
     parent_pid: Option<u32>,
 ) -> Result<()> {
-    let (mut reader, writer) = stream.split();
+    // Owned (not borrowed) halves: execute_command runs in its own spawned
+    // task so this loop can keep reading (a Cancel message needs to arrive
+    // mid-execution), and a spawned task needs 'static data.
+    let (mut reader, writer) = stream.into_split();
     let writer_arc = Arc::new(Mutex::new(writer));
+    // PID of the currently running command's forked child (its own session
+    // leader, see Fork::from_ptmx's setsid() call), so a Cancel message can
+    // signal it. None when no command is in flight.
+    let current_pid: Arc<Mutex<Option<libc::pid_t>>> = Arc::new(Mutex::new(None));
 
     loop {
         if shutdown.load(Ordering::SeqCst) {
@@ -234,7 +241,22 @@ async fn handle_client(
                 env,
                 working_dir,
             } => {
-                execute_command(&writer_arc, program, args, env, working_dir).await?;
+                // Spawned rather than awaited inline so this loop keeps
+                // reading from the socket while the command runs - a
+                // Cancel message needs to reach us mid-execution.
+                let writer_arc = writer_arc.clone();
+                let current_pid = current_pid.clone();
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        execute_command(&writer_arc, program, args, env, working_dir, current_pid)
+                            .await
+                    {
+                        error!("Error executing command: {}", e);
+                    }
+                });
+            }
+            ClientMessage::Cancel => {
+                cancel_running_command(&current_pid).await;
             }
         }
     }
@@ -242,12 +264,45 @@ async fn handle_client(
     Ok(())
 }
 
+/// Signal the currently running command's process group, escalating to
+/// SIGKILL if it's still alive a few seconds after SIGTERM. No-op if
+/// nothing is running.
+async fn cancel_running_command(current_pid: &Arc<Mutex<Option<libc::pid_t>>>) {
+    let Some(pid) = *current_pid.lock().await else {
+        info!("Cancel requested but no command is currently running");
+        return;
+    };
+
+    info!("Cancelling running command (pid {})", pid);
+    // Negative pid targets the whole process group - the forked child is
+    // its own session/group leader (see Fork::from_ptmx), so this also
+    // reaches any descendants it spawned.
+    unsafe {
+        libc::kill(-pid, libc::SIGTERM);
+    }
+
+    let current_pid = current_pid.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        if *current_pid.lock().await == Some(pid) {
+            warn!(
+                "Command (pid {}) still running 3s after SIGTERM, sending SIGKILL",
+                pid
+            );
+            unsafe {
+                libc::kill(-pid, libc::SIGKILL);
+            }
+        }
+    });
+}
+
 async fn execute_command(
-    writer: &Arc<Mutex<tokio::net::unix::WriteHalf<'_>>>,
+    writer: &Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
     program: String,
     args: Vec<String>,
     env: Vec<String>,
     working_dir: Option<String>,
+    current_pid: Arc<Mutex<Option<libc::pid_t>>>,
 ) -> Result<()> {
     info!("Executing: {} {:?}", program, args);
 
@@ -278,7 +333,9 @@ async fn execute_command(
             std::process::exit(1);
         }
         Fork::Parent(pid, master) => {
+            *current_pid.lock().await = Some(pid);
             let exit_code = read_pty_output(writer.clone(), master, pid).await?;
+            *current_pid.lock().await = None;
             let mut w = writer.lock().await;
             write_message(&mut *w, &DaemonMessage::Completed { exit_code }).await?;
         }
@@ -288,7 +345,7 @@ async fn execute_command(
 }
 
 async fn read_pty_output(
-    writer: Arc<Mutex<tokio::net::unix::WriteHalf<'_>>>,
+    writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
     master: pty::prelude::Master,
     pid: libc::pid_t,
 ) -> Result<i32> {

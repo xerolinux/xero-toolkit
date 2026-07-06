@@ -12,6 +12,8 @@ pub enum ClientMessage {
         env: Vec<String>,
         working_dir: Option<String>,
     },
+    /// Cancel the command currently running on this connection.
+    Cancel,
     /// Ping to check if daemon is alive.
     Ping,
     /// Shutdown the daemon.

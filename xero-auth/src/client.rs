@@ -4,7 +4,9 @@ use crate::protocol::{ClientMessage, DaemonMessage};
 use crate::protocol_io::{read_message, write_message};
 use crate::shared::get_socket_path;
 use anyhow::{Context, Result};
+use std::sync::Arc;
 use tokio::net::UnixStream;
+use tokio::sync::Notify;
 
 /// Client for communicating with the xero-auth daemon.
 pub struct Client {
@@ -35,10 +37,16 @@ impl Client {
     /// * `working_dir` - Optional working directory.
     /// * `on_output` - Callback for stdout output.
     /// * `on_error` - Callback for stderr output.
+    /// * `cancel` - Notified once to request cancelling the running command;
+    ///   forwards a `Cancel` message to the daemon, which signals the
+    ///   command's process group. Execution keeps waiting for the daemon's
+    ///   `Completed` afterward, so the returned exit code still reflects
+    ///   the (now-killed) command.
     ///
     /// # Returns
     ///
     /// The exit code of the command.
+    #[allow(clippy::too_many_arguments)]
     pub async fn execute<F, G>(
         &mut self,
         program: &str,
@@ -47,6 +55,7 @@ impl Client {
         working_dir: Option<&str>,
         on_output: F,
         on_error: G,
+        cancel: Arc<Notify>,
     ) -> Result<i32>
     where
         F: Fn(&str),
@@ -64,28 +73,38 @@ impl Client {
         write_message(&mut writer, &message).await?;
 
         let mut exit_code = None;
+        let mut cancel_sent = false;
 
         loop {
-            let response = match read_message::<_, DaemonMessage>(&mut reader).await? {
-                Some(msg) => msg,
-                None => break, // EOF
-            };
+            tokio::select! {
+                biased;
+                _ = cancel.notified(), if !cancel_sent => {
+                    cancel_sent = true;
+                    let _ = write_message(&mut writer, &ClientMessage::Cancel).await;
+                }
+                msg = read_message::<_, DaemonMessage>(&mut reader) => {
+                    let response = match msg? {
+                        Some(msg) => msg,
+                        None => break, // EOF
+                    };
 
-            match response {
-                DaemonMessage::Output(text) => {
-                    on_output(&text);
+                    match response {
+                        DaemonMessage::Output(text) => {
+                            on_output(&text);
+                        }
+                        DaemonMessage::Error(text) => {
+                            on_error(&text);
+                        }
+                        DaemonMessage::Completed { exit_code: code } => {
+                            exit_code = Some(code);
+                            break;
+                        }
+                        DaemonMessage::ErrorMessage(msg) => {
+                            anyhow::bail!("Daemon error: {}", msg);
+                        }
+                        _ => {}
+                    }
                 }
-                DaemonMessage::Error(text) => {
-                    on_error(&text);
-                }
-                DaemonMessage::Completed { exit_code: code } => {
-                    exit_code = Some(code);
-                    break;
-                }
-                DaemonMessage::ErrorMessage(msg) => {
-                    anyhow::bail!("Daemon error: {}", msg);
-                }
-                _ => {}
             }
         }
 

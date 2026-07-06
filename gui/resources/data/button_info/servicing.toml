@@ -84,15 +84,16 @@ details = [
   "Runs mkinitcpio -P then limine-mkinitcpio for boot entries.",
   "Boot menu shows only kernels and real other-OS chainload entries.",
   "Applies the XeroLinux boot splash wallpaper to Limine.",
+  "Cleans orphaned kernels/backups from the ESP to save space.",
 ]
-caution = "Irreversible. UEFI systems only. A reboot is required after this completes."
+caution = "Irreversible. Requires UEFI, GPT, and a 1024MB+ EFI partition. Reboot required after."
 
 [[button]]
 id = "btn_secureboot_setup"
 title = "SecureBoot Setup"
 summary = "Installs xsb-gui if needed, then minimizes the toolkit and launches it."
 details = [
-  "Hidden once Limine is active; disabled if SecureBoot is enabled.",
+  "Disabled once Limine is active or SecureBoot is enabled.",
   "Shows a simple confirmation popup before proceeding.",
   "Installs xsb-gui via the AUR helper if it isn't already present.",
   "Minimizes xero-toolkit and launches xsb-gui for SecureBoot setup.",

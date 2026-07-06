@@ -51,11 +51,6 @@ OTHER_OS="$(efibootmgr -v 2>/dev/null \
   | sed -E 's/\t.*$//' \
   || true)"
 
-if [[ -z "$OTHER_OS" ]]; then
-  echo "No other OS entries detected; nothing to chainload."
-  exit 0
-fi
-
 chainload_loader_path_for_os() {
   case "$1" in
     *[Ww]indows*) printf '/EFI/Microsoft/Boot/bootmgfw.efi' ;;
@@ -64,10 +59,18 @@ chainload_loader_path_for_os() {
 }
 
 # Idempotent: strip any chainload block this script previously appended
-# (always the last thing in the file) before re-appending, so reruns don't
-# duplicate entries.
+# (always the last thing in the file) before re-appending - this must run
+# even when OTHER_OS is now empty, so a rerun removes entries a past run
+# added for an OS that's since gone (uninstalled, or its firmware boot
+# entry removed), not just skip re-adding on top of them.
 TMP=$(mktemp)
 awk '/^### XeroLinux Chainload/ { exit } { print }' "$LIMINE_CONF" > "$TMP"
+
+if [[ -z "$OTHER_OS" ]]; then
+  mv "$TMP" "$LIMINE_CONF"
+  echo "No other OS entries detected; removed any stale chainload entries."
+  exit 0
+fi
 
 {
   cat "$TMP"

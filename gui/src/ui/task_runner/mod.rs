@@ -233,14 +233,45 @@ pub fn run(parent: &Window, commands: CommandSequence, title: &str) {
     widgets.init_sidebar_collapsed();
 
     let cancelled = Rc::new(RefCell::new(false));
-    let current_process = Rc::new(RefCell::new(None::<gtk4::gio::Subprocess>));
+    let current_pid = Rc::new(RefCell::new(None::<u32>));
     let commands = Rc::new(commands_vec);
 
-    // Cancel button handler
+    // Cancel button handler. Sends SIGTERM to the running child so it
+    // actually stops instead of just waiting - for privileged commands this
+    // reaches the `xero-auth` relay process, which forwards the cancel to
+    // the daemon over its own protocol so the real (root-owned) child gets
+    // signalled too (see xero-auth/src/daemon.rs's Cancel handling).
     let widgets_clone = widgets.clone();
     let cancelled_clone = cancelled.clone();
+    let current_pid_clone = current_pid.clone();
     cancel_button.connect_clicked(move |_| {
         *cancelled_clone.borrow_mut() = true;
+        if let Some(pid) = *current_pid_clone.borrow() {
+            info!(
+                "Cancel requested - sending SIGTERM to running command (pid {})",
+                pid
+            );
+            unsafe {
+                libc::kill(pid as libc::pid_t, libc::SIGTERM);
+            }
+            // Escalate if it's still running a few seconds later - mirrors
+            // the daemon's own SIGTERM-then-SIGKILL grace period.
+            let current_pid_for_timeout = current_pid_clone.clone();
+            glib::timeout_add_seconds_local(5, move || {
+                if let Some(still_pid) = *current_pid_for_timeout.borrow() {
+                    if still_pid == pid {
+                        warn!(
+                            "Command (pid {}) still running 5s after cancel, sending SIGKILL",
+                            pid
+                        );
+                        unsafe {
+                            libc::kill(pid as libc::pid_t, libc::SIGKILL);
+                        }
+                    }
+                }
+                glib::ControlFlow::Break
+            });
+        }
         widgets_clone.disable_cancel();
         widgets_clone.set_title(CANCEL_WAITING_MESSAGE);
     });
@@ -283,5 +314,5 @@ pub fn run(parent: &Window, commands: CommandSequence, title: &str) {
     }
 
     // Start executing commands
-    executor::execute_commands(widgets, commands, 0, cancelled, current_process);
+    executor::execute_commands(widgets, commands, 0, cancelled, current_pid);
 }

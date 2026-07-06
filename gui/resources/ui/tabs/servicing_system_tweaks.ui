@@ -162,7 +162,6 @@
                 <property name="width-request">200</property>
                 <property name="height-request">50</property>
                 <property name="css-classes">suggested-action pill</property>
-                <property name="visible">false</property>
               </object>
             </child>
           </object>
