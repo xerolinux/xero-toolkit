@@ -16,6 +16,15 @@ pub fn is_secureboot_enabled() -> bool {
         .any(|line| line.contains("Secure Boot:") && line.contains("Enabled"))
 }
 
+/// Whether the SecureBoot Setup button should be enabled (not hidden -
+/// visibility is gated separately on Limine not being installed yet).
+pub fn secureboot_setup_availability() -> Result<(), &'static str> {
+    if is_secureboot_enabled() {
+        return Err("SecureBoot is already enabled.");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

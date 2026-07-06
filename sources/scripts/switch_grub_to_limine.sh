@@ -31,9 +31,19 @@ else
   echo "No GRUB files found to back up"
 fi
 
-# Remove grub, and os-prober/update-grub only if actually installed.
-REMOVE_PKGS=(grub)
-for pkg in os-prober update-grub; do
+# Capture GRUB's own EFI loader path(s) on the ESP before removing anything,
+# so its stale NVRAM boot entry can be matched by content (not NVRAM label,
+# which varies by installer) and removed further down.
+GRUB_EFI_PATHS=""
+if [[ -d "${ESP}/EFI" ]]; then
+  GRUB_EFI_PATHS="$(find "${ESP}/EFI" -iname 'grubx64.efi' 2>/dev/null | sed "s#^${ESP}##")"
+fi
+
+# Remove grub and every package that depends on it, keeping only what's
+# actually installed (pacman -Rns aborts entirely if any target is absent).
+CANDIDATE_PKGS=(grub grub-hooks update-grub os-prober)
+REMOVE_PKGS=()
+for pkg in "${CANDIDATE_PKGS[@]}"; do
   if pacman -Q "$pkg" >/dev/null 2>&1; then
     REMOVE_PKGS+=("$pkg")
   fi
@@ -43,6 +53,15 @@ pacman -Rns --noconfirm "${REMOVE_PKGS[@]}"
 # Clear leftover config/theme files pacman leaves as .pacsave or never owned.
 rm -rf /etc/default/grub /etc/default/grub.pacsave /etc/grub.d /boot/grub \
   "${ESP}/EFI/GRUB" "${ESP}/EFI/grub"
+
+# Keep the boot menu to just kernel entries and real other-OS entries -
+# suppress limine-mkinitcpio-hook's own found-bootloader scan (systemd-boot/
+# rEFInd/other EFI loader) and its extra UEFI fallback registration; other
+# real OSes are added separately via chainload detection (efibootmgr scan).
+cat > /etc/default/limine <<'EOF'
+FIND_BOOTLOADERS=no
+ENABLE_LIMINE_FALLBACK=no
+EOF
 
 # Deploy Limine to the ESP.
 mkdir -p "${ESP}/EFI/limine"
@@ -65,4 +84,19 @@ else
   exit 1
 fi
 
-echo "Limine installed. Run mkinitcpio -P to generate limine.conf entries."
+# Remove GRUB's now-stale EFI boot entry so it no longer clutters the
+# firmware boot menu, now that Limine's own entry is registered above.
+if [[ -n "$GRUB_EFI_PATHS" ]]; then
+  EFIBOOTMGR_OUTPUT="$(efibootmgr -v 2>/dev/null)"
+  while IFS= read -r relpath; do
+    [[ -z "$relpath" ]] && continue
+    winpath="${relpath//\//\\}"
+    bootnum="$(grep -iF "$winpath" <<< "$EFIBOOTMGR_OUTPUT" | grep -oE '^Boot[0-9A-Fa-f]{4}' | head -n1 | sed 's/^Boot//')" || true
+    if [[ -n "$bootnum" ]]; then
+      efibootmgr -b "$bootnum" -B
+      echo "Removed stale GRUB firmware boot entry Boot${bootnum}"
+    fi
+  done <<< "$GRUB_EFI_PATHS"
+fi
+
+echo "Limine installed. Run limine-mkinitcpio (or limine-update) to generate limine.conf entries."

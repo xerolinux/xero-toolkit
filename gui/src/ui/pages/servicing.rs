@@ -271,12 +271,20 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
             "Switch GRUB to Limine",
             "This is <b>irreversible</b>.\n\n\
             GRUB will be backed up to <span foreground=\"cyan\">/root/grub-backup-&lt;timestamp&gt;.tar.gz</span>, \
-            then GRUB, os-prober, and update-grub (if present) will be removed along with all configs and themes.\n\n\
-            Limine and limine-mkinitcpio-hook will then be installed and activated, and the XeroLinux boot splash wallpaper will be applied.\n\n\
+            then GRUB and everything depending on it (grub-hooks, os-prober, update-grub, if present) will be \
+            removed along with all configs and themes.\n\n\
+            Limine and limine-mkinitcpio-hook will then be installed and activated, GRUB's old firmware boot entry \
+            removed, the boot menu trimmed to just kernels and real other-OS entries, and the XeroLinux boot \
+            splash wallpaper applied.\n\n\
             <span foreground=\"red\" weight=\"bold\">A reboot is required</span> after this completes.",
             move || {
                 let script = crate::config::paths::scripts()
                     .join("switch_grub_to_limine.sh")
+                    .to_string_lossy()
+                    .into_owned();
+
+                let chainload_script = crate::config::paths::scripts()
+                    .join("apply_limine_chainload.sh")
                     .to_string_lossy()
                     .into_owned();
 
@@ -306,7 +314,22 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
                             .privileged()
                             .program("mkinitcpio")
                             .args(&["-P"])
-                            .description("Rebuilding initramfs and generating Limine boot entries...")
+                            .description("Rebuilding initramfs...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("limine-mkinitcpio")
+                            .description("Generating Limine boot entries...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("bash")
+                            .args(&[&chainload_script])
+                            .description("Adding chainload entries for other detected OSes...")
                             .build(),
                     )
                     .then(
@@ -332,8 +355,17 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
 fn setup_secureboot_setup(page_builder: &Builder, window: &ApplicationWindow) {
     let btn_secureboot_setup = extract_widget::<gtk4::Button>(page_builder, "btn_secureboot_setup");
 
-    btn_secureboot_setup
-        .set_visible(!core::is_package_installed("limine") && !core::is_secureboot_enabled());
+    btn_secureboot_setup.set_visible(!core::is_package_installed("limine"));
+
+    match core::secureboot_setup_availability() {
+        Ok(()) => {
+            btn_secureboot_setup.set_sensitive(true);
+        }
+        Err(reason) => {
+            btn_secureboot_setup.set_sensitive(false);
+            btn_secureboot_setup.set_tooltip_text(Some(reason));
+        }
+    }
 
     use crate::ui::dialogs::confirm::show_confirmation;
 

@@ -79,9 +79,10 @@ title = "Switch GRUB to Limine"
 summary = "Irreversibly backs up and removes GRUB, then installs and activates Limine."
 details = [
   "Backs up GRUB files to /root/grub-backup-<timestamp>.tar.gz.",
-  "Removes grub, os-prober, and update-grub, plus their configs/themes.",
-  "Installs Limine and registers its EFI binary with efibootmgr.",
-  "Runs mkinitcpio -P to generate Limine's limine.conf boot entries.",
+  "Removes grub, grub-hooks, os-prober, update-grub, plus configs.",
+  "Installs Limine, registers its EFI entry, removes GRUB's old one.",
+  "Runs mkinitcpio -P then limine-mkinitcpio for boot entries.",
+  "Boot menu shows only kernels and real other-OS chainload entries.",
   "Applies the XeroLinux boot splash wallpaper to Limine.",
 ]
 caution = "Irreversible. UEFI systems only. A reboot is required after this completes."
@@ -91,7 +92,7 @@ id = "btn_secureboot_setup"
 title = "SecureBoot Setup"
 summary = "Installs xsb-gui if needed, then minimizes the toolkit and launches it."
 details = [
-  "Hidden once Limine is active or SecureBoot is already enabled.",
+  "Hidden once Limine is active; disabled if SecureBoot is enabled.",
   "Shows a simple confirmation popup before proceeding.",
   "Installs xsb-gui via the AUR helper if it isn't already present.",
   "Minimizes xero-toolkit and launches xsb-gui for SecureBoot setup.",

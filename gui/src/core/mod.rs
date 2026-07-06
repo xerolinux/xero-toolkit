@@ -22,5 +22,5 @@ pub mod system_check;
 pub use aur::get as aur_helper;
 pub use bootloader::limine_switch_availability;
 pub use package::{is_flatpak_installed, is_package_installed};
-pub use secureboot::is_secureboot_enabled;
+pub use secureboot::secureboot_setup_availability;
 pub use system_check::{check_dependencies, get_distribution_name, show_dependency_error_dialog};
