@@ -186,7 +186,7 @@ BACKUP_FILE="/root/grub-backup-${TIMESTAMP}.tar.gz"
 # Locate the EFI System Partition mountpoint.
 ESP=""
 for candidate in /boot/efi /efi /boot; do
-  if findmnt -n --target "$candidate" >/dev/null 2>&1; then
+  if mountpoint -q "$candidate" && [[ "$(findmnt -no FSTYPE "$candidate")" == "vfat" ]]; then
     ESP="$candidate"
     break
   fi
@@ -223,14 +223,17 @@ pacman -Rns --noconfirm "${REMOVE_PKGS[@]}"
 rm -rf /etc/default/grub /etc/default/grub.pacsave /etc/grub.d /boot/grub \
   "${ESP}/EFI/GRUB" "${ESP}/EFI/grub"
 
-# Deploy Limine to the ESP.
+# Deploy Limine to the ESP, including the fallback boot path most UEFI
+# firmware tries when no NVRAM entry is present or valid.
 mkdir -p "${ESP}/EFI/limine"
-cp /usr/share/limine/BOOTX64.EFI "${ESP}/EFI/limine/BOOTX64.EFI"
+cp "/usr/share/limine/BOOTX64.EFI" "${ESP}/EFI/limine/BOOTX64.EFI"
+mkdir -p "${ESP}/EFI/BOOT"
+cp "/usr/share/limine/BOOTX64.EFI" "${ESP}/EFI/BOOT/BOOTX64.EFI"
 
 # Register a boot entry via efibootmgr.
 ESP_SOURCE=$(findmnt -n -o SOURCE "$ESP")
 ESP_DISK=$(lsblk -no PKNAME "$ESP_SOURCE" | head -n1)
-ESP_PART=$(lsblk -no PARTNUM "$ESP_SOURCE")
+ESP_PART=$(lsblk -no PARTN "$ESP_SOURCE")
 
 if [[ -n "$ESP_DISK" && -n "$ESP_PART" ]]; then
   efibootmgr --create --disk "/dev/${ESP_DISK}" --part "$ESP_PART" \
@@ -468,4 +471,162 @@ git add gui/resources/ui/tabs/servicing_system_tweaks.ui \
         gui/src/ui/pages/servicing.rs \
         gui/resources/data/button_info/servicing.toml
 git commit -m "feat: add Switch GRUB to Limine button to Servicing page"
+```
+
+---
+
+### Task 4: Limine boot splash wallpaper
+
+**Files:**
+- Create: `sources/scripts/apply_limine_wallpaper.sh`
+- Modify: `gui/src/ui/pages/servicing.rs`
+- Modify: `gui/resources/data/button_info/servicing.toml`
+
+**Interfaces:**
+- Consumes: nothing from Task 1/2/3 code directly; this is a 4th
+  `CommandSequence` step appended after Task 3's step 3 (`mkinitcpio -P`),
+  since `limine.conf` only exists once `mkinitcpio -P` has run
+  `limine-mkinitcpio-hook`.
+- Produces: nothing consumed elsewhere (final step).
+
+Mirrors the wallpaper-splash approach already used in
+`~/xwork/LimineSecureBoot/lib/migrate.sh` (`cmd_apply_splash` /
+`write_limine_splash` / `verify_wallpaper_source_exists`), adapted to this
+simpler one-shot script: copy XeroLinux's existing wallpaper
+(`/usr/share/wallpapers/Xero-Plasma4.png`, shipped by the `kde-wallpapers`
+package - already present on XeroLinux systems, confirmed via
+`pacman -Qo`) to the ESP as `splash.png`, then rewrite `limine.conf`'s
+`### Theme` section to point at it.
+
+- [ ] **Step 1: Write the script**
+
+Create `sources/scripts/apply_limine_wallpaper.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+WALLPAPER_SRC="/usr/share/wallpapers/Xero-Plasma4.png"
+
+ESP=""
+for candidate in /boot/efi /efi /boot; do
+  if mountpoint -q "$candidate" && [[ "$(findmnt -no FSTYPE "$candidate")" == "vfat" ]]; then
+    ESP="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$ESP" ]]; then
+  echo "Could not locate EFI System Partition mountpoint" >&2
+  exit 1
+fi
+
+LIMINE_CONF="${ESP}/limine.conf"
+
+if [[ ! -f "$LIMINE_CONF" ]]; then
+  echo "limine.conf not found at $LIMINE_CONF" >&2
+  exit 1
+fi
+
+if [[ ! -f "$WALLPAPER_SRC" ]]; then
+  echo "XeroLinux wallpaper not found at $WALLPAPER_SRC" >&2
+  exit 1
+fi
+
+cp "$WALLPAPER_SRC" "${ESP}/splash.png"
+
+# Idempotently rewrite the ### Theme section to contain only the wallpaper
+# directive, replacing (not appending to) any prior section.
+TMP=$(mktemp)
+awk '
+  /^### Theme/ { skip=1; next }
+  skip && (/^###/ || NF==0) { skip=0 }
+  skip { next }
+  { print }
+' "$LIMINE_CONF" > "$TMP"
+{ printf '### Theme\nwallpaper: boot():/splash.png\n\n'; cat "$TMP"; } > "${LIMINE_CONF}.new"
+rm -f "$TMP"
+mv "${LIMINE_CONF}.new" "$LIMINE_CONF"
+
+echo "Limine boot splash wallpaper applied."
+```
+
+- [ ] **Step 2: Make it executable**
+
+Run: `chmod +x sources/scripts/apply_limine_wallpaper.sh`
+
+- [ ] **Step 3: Verify shell syntax**
+
+Run: `bash -n sources/scripts/apply_limine_wallpaper.sh`
+Expected: no output, exit code 0
+
+- [ ] **Step 4: Add the 4th CommandSequence step**
+
+Modify `gui/src/ui/pages/servicing.rs`'s `setup_switch_to_limine`: after the
+existing `mkinitcpio -P` step, add a 4th step running this script (same
+`crate::config::paths::scripts()` pattern as the Task 2 script):
+
+```rust
+                let wallpaper_script = crate::config::paths::scripts()
+                    .join("apply_limine_wallpaper.sh")
+                    .to_string_lossy()
+                    .into_owned();
+
+                let commands = CommandSequence::new()
+                    .then(
+                        Command::builder()
+                            .aur()
+                            .args(&["-S", "--noconfirm", "--needed", "limine", "limine-mkinitcpio-hook"])
+                            .description("Installing Limine...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("bash")
+                            .args(&[&script])
+                            .description("Backing up and removing GRUB, deploying Limine...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("mkinitcpio")
+                            .args(&["-P"])
+                            .description("Rebuilding initramfs and generating Limine boot entries...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("bash")
+                            .args(&[&wallpaper_script])
+                            .description("Applying XeroLinux boot splash wallpaper...")
+                            .build(),
+                    )
+                    .build();
+```
+
+Also update the warning dialog text (same function) to mention the boot
+splash wallpaper gets applied, alongside the existing irreversibility/
+backup/removal/reboot wording.
+
+- [ ] **Step 5: Update the button_info entry**
+
+Modify `gui/resources/data/button_info/servicing.toml`'s `btn_switch_limine`
+entry: add one more `details` line noting the wallpaper step, e.g.
+`"Applies the XeroLinux boot splash wallpaper to the new Limine menu."`
+
+- [ ] **Step 6: Build, format, lint**
+
+Run: `cargo build -p xero-toolkit && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings`
+Expected: build succeeds, no fmt changes needed, no clippy warnings
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add sources/scripts/apply_limine_wallpaper.sh \
+        gui/src/ui/pages/servicing.rs \
+        gui/resources/data/button_info/servicing.toml
+git commit -m "feat: apply XeroLinux boot splash wallpaper after Limine switch"
 ```

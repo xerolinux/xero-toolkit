@@ -9,6 +9,8 @@
 //! - Fix Arch keyring
 //! - Update mirrorlist
 //! - Parallel downloads adjustment
+//! - Switch GRUB to Limine
+//! - SecureBoot setup (xsb-gui)
 
 use crate::core;
 use crate::ui::dialogs::selection::{
@@ -18,8 +20,9 @@ use crate::ui::dialogs::terminal;
 use crate::ui::task_runner::{self, Command, CommandSequence};
 use crate::ui::utils::extract_widget;
 use gtk4::prelude::*;
-use gtk4::{ApplicationWindow, Builder};
-use log::info;
+use gtk4::{glib, ApplicationWindow, Builder};
+use log::{error, info};
+use std::process::{Command as StdCommand, Stdio};
 
 /// Set up all button handlers for the servicing/system tweaks page
 pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &ApplicationWindow) {
@@ -32,6 +35,8 @@ pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &
     setup_fix_arch_keyring(page_builder, window);
     setup_update_mirrorlist(page_builder, window);
     setup_parallel_downloads(page_builder, window);
+    setup_switch_to_limine(page_builder, window);
+    setup_secureboot_setup(page_builder, window);
 }
 
 fn setup_clr_pacman(page_builder: &Builder, window: &ApplicationWindow) {
@@ -239,4 +244,151 @@ fn setup_parallel_downloads(page_builder: &Builder, window: &ApplicationWindow) 
             false,
         );
     });
+}
+
+fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
+    use crate::ui::dialogs::warning::show_warning_confirmation;
+
+    let btn_switch_limine = extract_widget::<gtk4::Button>(page_builder, "btn_switch_limine");
+
+    match core::limine_switch_availability() {
+        Ok(()) => {
+            btn_switch_limine.set_sensitive(true);
+        }
+        Err(reason) => {
+            btn_switch_limine.set_sensitive(false);
+            btn_switch_limine.set_tooltip_text(Some(reason));
+        }
+    }
+
+    let window = window.clone();
+    btn_switch_limine.connect_clicked(move |_| {
+        info!("Servicing: Switch GRUB to Limine button clicked");
+
+        let window_clone = window.clone();
+        show_warning_confirmation(
+            window.upcast_ref(),
+            "Switch GRUB to Limine",
+            "This is <b>irreversible</b>.\n\n\
+            GRUB will be backed up to <span foreground=\"cyan\">/root/grub-backup-&lt;timestamp&gt;.tar.gz</span>, \
+            then GRUB, os-prober, and update-grub (if present) will be removed along with all configs and themes.\n\n\
+            Limine and limine-mkinitcpio-hook will then be installed and activated, and the XeroLinux boot splash wallpaper will be applied.\n\n\
+            <span foreground=\"red\" weight=\"bold\">A reboot is required</span> after this completes.",
+            move || {
+                let script = crate::config::paths::scripts()
+                    .join("switch_grub_to_limine.sh")
+                    .to_string_lossy()
+                    .into_owned();
+
+                let wallpaper_script = crate::config::paths::scripts()
+                    .join("apply_limine_wallpaper.sh")
+                    .to_string_lossy()
+                    .into_owned();
+
+                let commands = CommandSequence::new()
+                    .then(
+                        Command::builder()
+                            .aur()
+                            .args(&["-S", "--noconfirm", "--needed", "limine", "limine-mkinitcpio-hook"])
+                            .description("Installing Limine...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("bash")
+                            .args(&[&script])
+                            .description("Backing up and removing GRUB, deploying Limine...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("mkinitcpio")
+                            .args(&["-P"])
+                            .description("Rebuilding initramfs and generating Limine boot entries...")
+                            .build(),
+                    )
+                    .then(
+                        Command::builder()
+                            .privileged()
+                            .program("bash")
+                            .args(&[&wallpaper_script])
+                            .description("Applying XeroLinux boot splash wallpaper...")
+                            .build(),
+                    )
+                    .build();
+
+                task_runner::run(
+                    window_clone.upcast_ref(),
+                    commands,
+                    "Switch GRUB to Limine",
+                );
+            },
+        );
+    });
+}
+
+fn setup_secureboot_setup(page_builder: &Builder, window: &ApplicationWindow) {
+    let btn_secureboot_setup = extract_widget::<gtk4::Button>(page_builder, "btn_secureboot_setup");
+
+    btn_secureboot_setup
+        .set_visible(!core::is_package_installed("limine") && !core::is_secureboot_enabled());
+
+    use crate::ui::dialogs::confirm::show_confirmation;
+
+    let window = window.clone();
+    btn_secureboot_setup.connect_clicked(move |_| {
+        info!("Servicing: SecureBoot Setup button clicked");
+
+        let window_clone = window.clone();
+        show_confirmation(
+            window.upcast_ref(),
+            "Are you sure?",
+            "This will install xsb-gui if needed, then minimize xero-toolkit and launch it to set up SecureBoot.",
+            move || {
+                if core::is_package_installed("xsb-gui") {
+                    launch_xsb_gui_and_minimize(&window_clone);
+                    return;
+                }
+
+                let commands = CommandSequence::new()
+                    .then(
+                        Command::builder()
+                            .aur()
+                            .args(&["-S", "--noconfirm", "--needed", "xsb-gui"])
+                            .description("Installing SecureBoot Setup tool...")
+                            .build(),
+                    )
+                    .build();
+
+                task_runner::run(window_clone.upcast_ref(), commands, "SecureBoot Setup");
+
+                let window_clone2 = window_clone.clone();
+                glib::timeout_add_seconds_local(1, move || {
+                    if task_runner::is_running() {
+                        return glib::ControlFlow::Continue;
+                    }
+                    if core::is_package_installed("xsb-gui") {
+                        launch_xsb_gui_and_minimize(&window_clone2);
+                    }
+                    glib::ControlFlow::Break
+                });
+            },
+        );
+    });
+}
+
+fn launch_xsb_gui_and_minimize(window: &ApplicationWindow) {
+    info!("Launching xsb-gui...");
+    if let Err(e) = StdCommand::new("xsb-gui")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        error!("Failed to launch xsb-gui: {}", e);
+        return;
+    }
+    window.minimize();
 }

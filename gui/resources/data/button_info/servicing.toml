@@ -72,3 +72,27 @@ details = [
   "Used to adjust pacman parallel download configuration interactively.",
   "Runs inside the toolkit terminal dialog.",
 ]
+
+[[button]]
+id = "btn_switch_limine"
+title = "Switch GRUB to Limine"
+summary = "Irreversibly backs up and removes GRUB, then installs and activates Limine."
+details = [
+  "Backs up GRUB files to /root/grub-backup-<timestamp>.tar.gz.",
+  "Removes grub, os-prober, and update-grub, plus their configs/themes.",
+  "Installs Limine and registers its EFI binary with efibootmgr.",
+  "Runs mkinitcpio -P to generate Limine's limine.conf boot entries.",
+  "Applies the XeroLinux boot splash wallpaper to Limine.",
+]
+caution = "Irreversible. UEFI systems only. A reboot is required after this completes."
+
+[[button]]
+id = "btn_secureboot_setup"
+title = "SecureBoot Setup"
+summary = "Installs xsb-gui if needed, then minimizes the toolkit and launches it."
+details = [
+  "Hidden once Limine is active or SecureBoot is already enabled.",
+  "Shows a simple confirmation popup before proceeding.",
+  "Installs xsb-gui via the AUR helper if it isn't already present.",
+  "Minimizes xero-toolkit and launches xsb-gui for SecureBoot setup.",
+]

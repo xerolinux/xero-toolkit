@@ -142,6 +142,31 @@
             </child>
           </object>
         </child>
+        <!-- Row 4: Switch GRUB to Limine, SecureBoot Setup -->
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">16</property>
+            <property name="halign">center</property>
+            <child>
+              <object class="GtkButton" id="btn_switch_limine">
+                <property name="label">Switch GRUB to Limine</property>
+                <property name="width-request">200</property>
+                <property name="height-request">50</property>
+                <property name="css-classes">destructive-action pill</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="btn_secureboot_setup">
+                <property name="label">SecureBoot Setup</property>
+                <property name="width-request">200</property>
+                <property name="height-request">50</property>
+                <property name="css-classes">suggested-action pill</property>
+                <property name="visible">false</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>

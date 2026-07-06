@@ -3,6 +3,7 @@
 //! This module contains all dialog-related UI components:
 //! - `about`: About dialog with creator information
 //! - `button_info`: Explanatory info dialogs for action buttons
+//! - `confirm`: Plain "Are you sure?" confirmation dialogs
 //! - `error`: Simple error message dialogs
 //! - `selection`: Multi-choice selection dialogs
 //! - `download`: ISO download dialogs
@@ -10,6 +11,7 @@
 
 pub mod about;
 pub mod button_info;
+pub mod confirm;
 pub mod download;
 pub mod error;
 pub mod selection;
