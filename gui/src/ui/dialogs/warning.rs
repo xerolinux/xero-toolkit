@@ -14,28 +14,42 @@ pub fn show_warning_confirmation<F>(parent: &Window, heading: &str, message: &st
 where
     F: FnOnce() + 'static,
 {
+    show_warning_confirmation_styled(parent, heading, message, false, on_confirm)
+}
+
+/// Same as [`show_warning_confirmation`], but with `emphasize: true` the
+/// message is rendered as a centered, red pill-shaped badge instead of the
+/// usual plain left-aligned text - for the rare warning that should read as
+/// impossible to miss.
+pub fn show_warning_confirmation_styled<F>(
+    parent: &Window,
+    heading: &str,
+    message: &str,
+    emphasize: bool,
+    on_confirm: F,
+) where
+    F: FnOnce() + 'static,
+{
     info!("Showing warning confirmation dialog: {}", heading);
 
-    // Load the UI from resource
     let builder = Builder::from_resource(crate::config::resources::dialogs::WARNING);
-
-    // Get the dialog window
     let dialog: Window = extract_widget(&builder, "warning_dialog");
-
-    // Set transient parent
     dialog.set_transient_for(Some(parent));
 
-    // Get UI elements
     let heading_label: Label = extract_widget(&builder, "dialog_heading");
     let warning_message: Label = extract_widget(&builder, "warning_message");
     let cancel_button: Button = extract_widget(&builder, "cancel_button");
     let continue_button: Button = extract_widget(&builder, "continue_button");
 
-    // Set heading (remove emoji from heading since we have an icon now)
     heading_label.set_label(heading);
     continue_button.set_label("Continue");
 
-    // Set message with Pango markup
+    if emphasize {
+        warning_message.set_justify(gtk4::Justification::Center);
+        warning_message.set_xalign(0.5);
+        warning_message.add_css_class("warning-pill");
+    }
+
     warning_message.set_markup(message);
     warning_message.connect_activate_link(|_, uri| {
         if let Err(e) = crate::core::package::open_url(uri) {
@@ -44,7 +58,6 @@ where
         glib::Propagation::Stop
     });
 
-    // Setup callbacks
     let dialog_clone = dialog.clone();
     cancel_button.connect_clicked(move |_| {
         info!("Warning dialog cancelled");
@@ -62,6 +75,5 @@ where
         dialog_clone.close();
     });
 
-    // Show the dialog
     dialog.present();
 }

@@ -247,7 +247,7 @@ fn setup_parallel_downloads(page_builder: &Builder, window: &ApplicationWindow) 
 }
 
 fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
-    use crate::ui::dialogs::warning::show_warning_confirmation;
+    use crate::ui::dialogs::warning::show_warning_confirmation_styled;
 
     let btn_switch_limine = extract_widget::<gtk4::Button>(page_builder, "btn_switch_limine");
 
@@ -266,18 +266,12 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
         info!("Servicing: Switch GRUB to Limine button clicked");
 
         let window_clone = window.clone();
-        show_warning_confirmation(
+        show_warning_confirmation_styled(
             window.upcast_ref(),
             "Switch GRUB to Limine",
-            "This is <b>irreversible</b>.\n\n\
-            GRUB will be backed up to <span foreground=\"cyan\">/root/grub-backup-&lt;timestamp&gt;.tar.gz</span>, \
-            then GRUB and everything depending on it (grub-hooks, os-prober, update-grub, if present) will be \
-            removed along with all configs and themes.\n\n\
-            Limine and limine-mkinitcpio-hook will then be installed and activated, GRUB's old firmware boot entry \
-            removed, the boot menu trimmed to just kernels and real other-OS entries, the XeroLinux boot splash \
-            wallpaper applied, and the EFI system partition cleaned of orphaned kernels/backups to keep its usage \
-            to a minimum.\n\n\
-            <span foreground=\"red\" weight=\"bold\">A reboot is required</span> after this completes.",
+            "This will replace Grub with Limine Bootloader. There ain't no coming back from \
+            that. Are you sure you want to proceed?",
+            true,
             move || {
                 let script = crate::config::paths::scripts()
                     .join("switch_grub_to_limine.sh")
@@ -303,7 +297,13 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
                     .then(
                         Command::builder()
                             .aur()
-                            .args(&["-S", "--noconfirm", "--needed", "limine", "limine-mkinitcpio-hook"])
+                            .args(&[
+                                "-S",
+                                "--noconfirm",
+                                "--needed",
+                                "limine",
+                                "limine-mkinitcpio-hook",
+                            ])
                             .description("Installing Limine...")
                             .build(),
                     )
@@ -356,11 +356,7 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
                     )
                     .build();
 
-                task_runner::run(
-                    window_clone.upcast_ref(),
-                    commands,
-                    "Switch GRUB to Limine",
-                );
+                task_runner::run(window_clone.upcast_ref(), commands, "Switch GRUB to Limine");
             },
         );
     });
@@ -379,17 +375,19 @@ fn setup_secureboot_setup(page_builder: &Builder, window: &ApplicationWindow) {
         }
     }
 
-    use crate::ui::dialogs::confirm::show_confirmation;
+    use crate::ui::dialogs::warning::show_warning_confirmation_styled;
 
     let window = window.clone();
     btn_secureboot_setup.connect_clicked(move |_| {
         info!("Servicing: SecureBoot Setup button clicked");
 
         let window_clone = window.clone();
-        show_confirmation(
+        show_warning_confirmation_styled(
             window.upcast_ref(),
-            "Are you sure?",
-            "This will install xsb-gui if needed, then minimize xero-toolkit and launch it to set up SecureBoot.",
+            "SecureBoot Setup",
+            "This will install &amp; launch SecureBoot tool. It's destructive. Know what you \
+            are doing. <b>PROCEED AT OWN RISK!</b>",
+            true,
             move || {
                 if core::is_package_installed("xsb-gui") {
                     launch_xsb_gui_and_minimize(&window_clone);

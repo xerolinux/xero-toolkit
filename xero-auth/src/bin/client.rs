@@ -33,7 +33,6 @@ async fn main() {
 
     let mut args = Args::parse();
 
-    // Capture current environment variables
     let mut env_vars = Vec::new();
     for (key, value) in std::env::vars() {
         env_vars.push(format!("{}={}", key, value));

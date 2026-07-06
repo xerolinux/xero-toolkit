@@ -63,7 +63,6 @@ impl Client {
     {
         let (mut reader, mut writer) = self.stream.split();
 
-        // Write request message
         let message = ClientMessage::Execute {
             program: program.to_string(),
             args: args.to_vec(),
@@ -115,11 +114,9 @@ impl Client {
     pub async fn shutdown(&mut self) -> Result<()> {
         let (mut reader, mut writer) = self.stream.split();
 
-        // Send shutdown message
         let message = ClientMessage::Shutdown;
         write_message(&mut writer, &message).await?;
 
-        // Read shutdown acknowledgment
         match read_message::<_, DaemonMessage>(&mut reader).await? {
             Some(DaemonMessage::ShutdownAck) => Ok(()),
             Some(msg) => anyhow::bail!("Unexpected response to shutdown: {:?}", msg),

@@ -133,3 +133,15 @@
 .tip-banner-purple .tip-banner-text {
     color: white;
 }
+
+/* ============================================
+   Warning Dialog Message Pill
+   ============================================ */
+
+.warning-pill {
+    border-radius: 999px;
+    background: @error_bg_color;
+    color: white;
+    padding: 14px 22px;
+    font-weight: 500;
+}

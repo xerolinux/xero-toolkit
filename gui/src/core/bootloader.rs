@@ -12,8 +12,12 @@ fn is_uefi() -> bool {
     std::path::Path::new("/sys/firmware/efi/efivars").exists()
 }
 
-/// Find the EFI System Partition mountpoint, mirroring
-/// `~/xwork/LimineSecureBoot/lib/preflight.sh`'s `find_esp_mountpoint`.
+/// Find the EFI System Partition mountpoint. Matched by mountpoint + vfat
+/// fstype (same check `switch_grub_to_limine.sh` already uses successfully)
+/// rather than checking for an `EFI` subdirectory - this function runs
+/// unprivileged from the GUI process, and ESP mounts are commonly
+/// root-restricted (0700), so a directory-traversal check would silently
+/// fail here even on a perfectly valid ESP.
 fn find_esp_mountpoint() -> Option<&'static str> {
     let output = Command::new("findmnt")
         .args(["-rno", "TARGET"])
@@ -22,10 +26,17 @@ fn find_esp_mountpoint() -> Option<&'static str> {
     let mounted = String::from_utf8_lossy(&output.stdout);
     ["/boot/efi", "/efi", "/boot"]
         .into_iter()
-        .find(|candidate| {
-            mounted.lines().any(|line| line == *candidate)
-                && std::path::Path::new(&format!("{candidate}/EFI")).is_dir()
-        })
+        .find(|candidate| mounted.lines().any(|line| line == *candidate) && is_vfat(candidate))
+}
+
+fn is_vfat(mountpoint: &str) -> bool {
+    let Ok(output) = Command::new("findmnt")
+        .args(["-no", "FSTYPE", mountpoint])
+        .output()
+    else {
+        return false;
+    };
+    String::from_utf8_lossy(&output.stdout).trim() == "vfat"
 }
 
 fn esp_source_device(esp_mountpoint: &str) -> Option<String> {

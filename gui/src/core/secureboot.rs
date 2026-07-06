@@ -5,7 +5,7 @@ use std::process::Command;
 /// Returns true only if `sbctl status` reports SecureBoot as enabled.
 /// Returns false if `sbctl` is missing or its output can't be parsed -
 /// an undeterminable state should not block the button.
-pub fn is_secureboot_enabled() -> bool {
+fn is_secureboot_enabled() -> bool {
     let output = match Command::new("sbctl").arg("status").output() {
         Ok(output) => output,
         Err(_) => return false,

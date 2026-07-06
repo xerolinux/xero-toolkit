@@ -96,7 +96,6 @@ pub mod resources {
         pub const ABOUT: &str = "/xyz/xerolinux/xero-toolkit/ui/dialogs/about_dialog.ui";
         pub const BUTTON_INFO: &str =
             "/xyz/xerolinux/xero-toolkit/ui/dialogs/button_info_dialog.ui";
-        pub const CONFIRM: &str = "/xyz/xerolinux/xero-toolkit/ui/dialogs/confirm_dialog.ui";
         pub const DEPENDENCY_ERROR: &str =
             "/xyz/xerolinux/xero-toolkit/ui/dialogs/dependency_error_dialog.ui";
         pub const DOWNLOAD: &str = "/xyz/xerolinux/xero-toolkit/ui/dialogs/download_dialog.ui";

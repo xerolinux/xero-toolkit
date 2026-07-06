@@ -94,7 +94,7 @@ title = "SecureBoot Setup"
 summary = "Installs xsb-gui if needed, then minimizes the toolkit and launches it."
 details = [
   "Disabled once Limine is active or SecureBoot is enabled.",
-  "Shows a simple confirmation popup before proceeding.",
+  "Shows a destructive-action warning before proceeding.",
   "Installs xsb-gui via the AUR helper if it isn't already present.",
   "Minimizes xero-toolkit and launches xsb-gui for SecureBoot setup.",
 ]

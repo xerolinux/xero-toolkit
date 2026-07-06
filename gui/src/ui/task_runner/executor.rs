@@ -64,22 +64,17 @@ impl RunningContext {
             return;
         };
 
-        // Clear current process
         self.current_pid.borrow_mut().take();
 
-        // Check if canceled
         if *self.cancelled.borrow() {
-            // Mark the current task as canceled
             self.widgets
                 .update_task_status(self.index, TaskStatus::Cancelled);
             finalize_execution(&self.widgets, false, super::CANCELLED_MESSAGE);
             return;
         }
 
-        // Handle result and print exit code to terminal
         match result {
             CommandResult::Success => {
-                // Print exit code for successful command
                 self.widgets.append_colored("\n[Exit code: 0]\n", "stdout");
 
                 self.widgets
@@ -93,7 +88,6 @@ impl RunningContext {
                 );
             }
             CommandResult::Failure { exit_code } => {
-                // Print exit code for failed command
                 let exit_msg = match exit_code {
                     Some(code) => format!("\n[Exit code: {}]\n", code),
                     None => "\n[Exit code: unknown]\n".to_string(),
@@ -103,7 +97,6 @@ impl RunningContext {
                 self.widgets
                     .update_task_status(self.index, TaskStatus::Failed);
 
-                // Include exit code in error message if available
                 let exit_msg = exit_code
                     .map(|code| format!(" (exit code: {})", code))
                     .unwrap_or_default();
@@ -129,7 +122,6 @@ pub fn execute_commands(
     current_pid: Rc<RefCell<Option<u32>>>,
 ) {
     if *cancelled.borrow() {
-        // If there's a current task being processed, mark it as canceled
         if index < commands.len() {
             widgets.update_task_status(index, TaskStatus::Cancelled);
         }
@@ -144,7 +136,6 @@ pub fn execute_commands(
 
     let cmd = &commands[index];
 
-    // Mark current task as running
     widgets.update_task_status(index, TaskStatus::Running);
     widgets.set_title(&cmd.description);
 
@@ -166,12 +157,10 @@ pub fn execute_commands(
 
     info!("Executing: {} {:?}", program, args);
 
-    // Use std::process for real-time output streaming
     use std::process::{Command, Stdio};
     use std::sync::Arc;
     use std::thread;
 
-    // Create context for this command
     let context = RunningContext::new(
         widgets.clone(),
         commands.clone(),
@@ -180,7 +169,6 @@ pub fn execute_commands(
         current_pid.clone(),
     );
 
-    // Display command header
     widgets.append_command_header(&cmd.description);
 
     let mut process = Command::new(&program);
@@ -214,20 +202,16 @@ pub fn execute_commands(
         }
     };
 
-    // Store child process for cancellation
     use std::sync::Mutex;
     *current_pid.borrow_mut() = Some(child.id());
     let child_arc = Arc::new(Mutex::new(Some(child)));
 
-    // Set up result storage
     let result_arc: Arc<Mutex<Option<CommandResult>>> = Arc::new(Mutex::new(None));
 
-    // Set up real-time output streaming using channels
     use std::sync::mpsc;
     let (stdout_tx, stdout_rx) = mpsc::channel();
     let (stderr_tx, stderr_rx) = mpsc::channel();
 
-    // Spawn thread to read stdout
     let stdout_handle = child_arc
         .lock()
         .unwrap()
@@ -251,7 +235,6 @@ pub fn execute_commands(
             })
         });
 
-    // Spawn thread to read stderr
     let stderr_handle = child_arc
         .lock()
         .unwrap()
@@ -275,24 +258,18 @@ pub fn execute_commands(
             })
         });
 
-    // Process output in main thread
     let widgets_stdout = widgets.clone();
     let widgets_stderr = widgets.clone();
     let result_arc_for_output = result_arc.clone();
     glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
-        // Process stdout
         while let Ok(text) = stdout_rx.try_recv() {
             let cleaned_text = strip_ansi_escapes::strip_str(&text);
-            // Text already includes newline from buffer processing
             widgets_stdout.append_colored(&cleaned_text, "stdout");
         }
-        // Process stderr
         while let Ok(text) = stderr_rx.try_recv() {
             let cleaned_text = strip_ansi_escapes::strip_str(&text);
-            // Text already includes newline from buffer processing
             widgets_stderr.append_colored(&cleaned_text, "stderr");
         }
-        // Stop if result is ready
         if result_arc_for_output.lock().unwrap().is_some() {
             glib::ControlFlow::Break
         } else {
@@ -300,11 +277,9 @@ pub fn execute_commands(
         }
     });
 
-    // Wait for process to complete in a separate thread
     let result_arc_clone = result_arc.clone();
 
     thread::spawn(move || {
-        // Wait for output threads to finish
         if let Some(handle) = stdout_handle {
             if let Err(e) = handle.join() {
                 warn!("Error joining stdout reader thread: {:?}", e);
@@ -316,7 +291,6 @@ pub fn execute_commands(
             }
         }
 
-        // Wait for process
         let mut child_guard = child_arc.lock().unwrap();
         if let Some(mut child) = child_guard.take() {
             let result = match child.wait() {
@@ -338,7 +312,6 @@ pub fn execute_commands(
         }
     });
 
-    // Check for result in main thread
     let context_clone = context.clone();
     glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
         let mut result_guard = result_arc.lock().unwrap();
@@ -363,7 +336,6 @@ pub fn execute_commands(
 ///
 /// Returns an error if the AUR helper is required but not available.
 fn resolve_command(command: &Command) -> Result<(String, Vec<String>), String> {
-    // Prepare PATH with scripts directory for sudo shim
     let scripts_dir = crate::config::paths::scripts();
     let shim_path_env = if scripts_dir.exists() {
         if let Ok(path) = std::env::var("PATH") {
@@ -381,7 +353,6 @@ fn resolve_command(command: &Command) -> Result<(String, Vec<String>), String> {
             // Use xero-auth client instead of pkexec for better session reuse
             let mut args = Vec::new();
 
-            // Pass PATH via --env if available
             if let Some(env) = &shim_path_env {
                 args.push("--env".to_string());
                 args.push(env.clone());
@@ -403,7 +374,6 @@ fn resolve_command(command: &Command) -> Result<(String, Vec<String>), String> {
     }
 }
 
-/// Stop the daemon if needed.
 fn stop_daemon_if_needed() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     if let Err(e) = rt.block_on(core::daemon::stop_daemon()) {
@@ -415,10 +385,8 @@ fn stop_daemon_if_needed() {
 pub fn finalize_execution(widgets: &TaskRunnerWidgets, success: bool, message: &str) {
     use std::sync::atomic::Ordering;
 
-    // Stop daemon before finalizing
     stop_daemon_if_needed();
 
-    // Print final message to terminal
     if success {
         let success_msg = format!("\n{}\n", message);
         widgets.append_colored(&success_msg, "stdout");

@@ -320,7 +320,6 @@ async fn execute_command(
             let mut cmd = std::process::Command::new(&program);
             cmd.args(&args);
 
-            // Apply environment variables
             for env_str in env {
                 if let Some((key, value)) = env_str.split_once('=') {
                     cmd.env(key, value);
@@ -354,12 +353,8 @@ async fn read_pty_output(
     let read_handle = tokio::task::spawn_blocking(move || {
         read_buffer_with_line_processing(
             master,
-            |text| {
-                // Send successful chunk
-                tx.send(Ok(text)).is_ok()
-            },
+            |text| tx.send(Ok(text)).is_ok(),
             |e| {
-                // Send error
                 let _ = tx.send(Err(e));
             },
         );
