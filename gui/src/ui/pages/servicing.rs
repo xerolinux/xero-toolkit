@@ -312,7 +312,7 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
                     .then(
                         Command::builder()
                             .privileged()
-                            .program("mkinitcpio")
+                            .program("/usr/bin/mkinitcpio")
                             .args(&["-P"])
                             .description("Rebuilding initramfs...")
                             .build(),
