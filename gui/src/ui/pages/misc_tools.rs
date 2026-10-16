@@ -4,6 +4,7 @@
 //! - EFI Boot Manager GUI
 //! - Wallpaper Browser GUI
 //! - PHP Server GUI
+//! - XSpeedTest
 
 use crate::ui::task_runner::{self, Command, CommandSequence};
 use crate::ui::utils::extract_widget;
@@ -17,6 +18,7 @@ pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &
     setup_efiboot_manager(page_builder, window);
     setup_wallpaper_browser(page_builder, window);
     setup_php_server_gui(page_builder, window);
+    setup_xspeedtest(page_builder, window);
 }
 
 fn setup_efiboot_manager(builder: &Builder, window: &ApplicationWindow) {
@@ -87,5 +89,26 @@ fn setup_php_server_gui(builder: &Builder, window: &ApplicationWindow) {
             .build();
 
         task_runner::run(window.upcast_ref(), commands, "PHP Server GUI Installation");
+    });
+}
+
+fn setup_xspeedtest(builder: &Builder, window: &ApplicationWindow) {
+    let button = extract_widget::<Button>(builder, "btn_xspeedtest");
+    let window = window.clone();
+
+    button.connect_clicked(move |_| {
+        info!("XSpeedTest button clicked");
+
+        let commands = CommandSequence::new()
+            .then(
+                Command::builder()
+                    .aur()
+                    .args(&["-S", "--noconfirm", "--needed", "xspeedtest"])
+                    .description("Installing XSpeedTest from XeroLinux repo...")
+                    .build(),
+            )
+            .build();
+
+        task_runner::run(window.upcast_ref(), commands, "XSpeedTest Installation");
     });
 }

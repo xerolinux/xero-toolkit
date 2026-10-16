@@ -47,15 +47,6 @@ details = [
 caution = "This rewrites keyring state and should not be interrupted mid-run."
 
 [[button]]
-id = "btn_plasma_x11"
-title = "Plasma X11 Session"
-summary = "Installs kwin-x11 and plasma-x11-session packages."
-details = [
-  "Provides KDE Plasma X11 session components.",
-  "Useful as fallback for Wayland-specific issues.",
-]
-
-[[button]]
 id = "btn_update_mirrorlist"
 title = "Update Mirrorlist"
 summary = "Updates Arch mirrorlist and optionally Chaotic-AUR with rate-mirrors."

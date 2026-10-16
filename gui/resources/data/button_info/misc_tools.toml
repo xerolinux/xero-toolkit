@@ -26,3 +26,12 @@ details = [
   "Tool launches a local PHP built-in server from a desktop UI.",
 ]
 caution = "This tool is intended for local development workflows and exposes a local server while it is running."
+
+[[button]]
+id = "btn_xspeedtest"
+title = "XSpeedTest"
+summary = "Installs the XSpeedTest GUI from the XeroLinux repo."
+details = [
+  "Installs the repo package xspeedtest with pacman.",
+  "Qt 6 front-end for speedtest-cli with a Plasma 6 widget.",
+]

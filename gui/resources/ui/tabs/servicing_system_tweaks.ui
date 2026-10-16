@@ -54,7 +54,7 @@
         <property name="halign">center</property>
         <property name="valign">center</property>
         <property name="vexpand">true</property>
-        <!-- Row 1: Clear Pacman, Unlock Pacman, Plasma X11 -->
+        <!-- Row 1: Clear Pacman, Unlock Pacman -->
         <child>
           <object class="GtkBox">
             <property name="orientation">horizontal</property>
@@ -71,14 +71,6 @@
             <child>
               <object class="GtkButton" id="btn_unlock_pacman">
                 <property name="label">Unlock Pacman DB</property>
-                <property name="width-request">200</property>
-                <property name="height-request">50</property>
-                <property name="css-classes">suggested-action pill</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkButton" id="btn_plasma_x11">
-                <property name="label">Plasma X11 Session</property>
                 <property name="width-request">200</property>
                 <property name="height-request">50</property>
                 <property name="css-classes">suggested-action pill</property>

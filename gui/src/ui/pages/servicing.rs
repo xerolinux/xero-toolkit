@@ -3,7 +3,6 @@
 //! Handles:
 //! - Clear Pacman cache
 //! - Unlock Pacman database
-//! - Plasma X11 session installation
 //! - Pacman local database fix
 //! - Fix GPGME database
 //! - Fix Arch keyring
@@ -29,7 +28,6 @@ pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &
     crate::ui::dialogs::button_info::attach_to_builder(page_builder, window.upcast_ref());
     setup_clr_pacman(page_builder, window);
     setup_unlock_pacman(page_builder, window);
-    setup_plasma_x11(page_builder, window);
     setup_pacman_db_fix(page_builder, window);
     setup_fix_gpgme(page_builder, window);
     setup_fix_arch_keyring(page_builder, window);
@@ -71,24 +69,6 @@ fn setup_unlock_pacman(page_builder: &Builder, window: &ApplicationWindow) {
             )
             .build();
         task_runner::run(window.upcast_ref(), commands, "Unlock Pacman Database");
-    });
-}
-
-fn setup_plasma_x11(page_builder: &Builder, window: &ApplicationWindow) {
-    let btn_plasma_x11 = extract_widget::<gtk4::Button>(page_builder, "btn_plasma_x11");
-    let window = window.clone();
-    btn_plasma_x11.connect_clicked(move |_| {
-        info!("Servicing: Plasma X11 Session button clicked");
-        let commands = CommandSequence::new()
-            .then(
-                Command::builder()
-                    .aur()
-                    .args(&["-S", "--noconfirm", "kwin-x11", "plasma-x11-session"])
-                    .description("Installing KDE Plasma X11 session components...")
-                    .build(),
-            )
-            .build();
-        task_runner::run(window.upcast_ref(), commands, "Install KDE X11 Session");
     });
 }
 

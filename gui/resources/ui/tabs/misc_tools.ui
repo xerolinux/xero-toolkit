@@ -88,6 +88,14 @@
                 <property name="css-classes">suggested-action pill</property>
               </object>
             </child>
+            <child>
+              <object class="GtkButton" id="btn_xspeedtest">
+                <property name="label">XSpeedTest</property>
+                <property name="width-request">220</property>
+                <property name="height-request">50</property>
+                <property name="css-classes">suggested-action pill</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>
