@@ -1,7 +1,10 @@
 [package]
 name = "xero-auth"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "xero-authd"
