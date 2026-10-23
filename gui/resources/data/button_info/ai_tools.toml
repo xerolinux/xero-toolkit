@@ -1,0 +1,27 @@
+[[button]]
+id = "btn_lm_studio"
+title = "LM Studio"
+summary = "Installs the official LM Studio AppImage and adds it to the app menu."
+details = [
+  "Downloads the latest AppImage from lmstudio.ai into ~/.local/share/xpm/appimages/.",
+  "Marks it executable and creates ~/.local/share/applications/lm-studio.desktop.",
+  "Runs as your user, no root needed. Download is over 1 GB.",
+]
+
+[[button]]
+id = "btn_claude"
+title = "Claude"
+summary = "Choose Claude Code (CLI), Claude Desktop, or both."
+details = [
+  "Claude Code is installed with the official script from claude.ai into ~/.local/bin.",
+  "Claude Desktop is installed as the claude-desktop package from Chaotic-AUR.",
+]
+
+[[button]]
+id = "btn_alpaca"
+title = "Alpaca"
+summary = "Installs Alpaca from Flathub."
+details = [
+  "Installs the com.jeffser.Alpaca Flatpak.",
+  "Alpaca is a GTK chat app for local and remote language models.",
+]

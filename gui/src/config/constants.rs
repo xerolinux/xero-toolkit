@@ -112,6 +112,7 @@ pub mod resources {
     }
 
     pub mod tabs {
+        pub const AI_TOOLS: &str = "/xyz/xerolinux/xero-toolkit/ui/tabs/ai_tools.ui";
         pub const BIOMETRICS: &str = "/xyz/xerolinux/xero-toolkit/ui/tabs/biometrics.ui";
         pub const CONTAINERS_VMS: &str = "/xyz/xerolinux/xero-toolkit/ui/tabs/containers_vms.ui";
         pub const CUSTOMIZATION: &str = "/xyz/xerolinux/xero-toolkit/ui/tabs/customization.ui";

@@ -11,11 +11,22 @@ pub struct Config {
     pub migrations: MigrationsConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GeneralConfig {
     /// Whether to launch xero-toolkit on login
     pub autostart: bool,
+    /// Whether seasonal overlay effects (snow, bats) are shown
+    pub seasonal_effects_enabled: bool,
+}
+
+impl Default for GeneralConfig {
+    fn default() -> Self {
+        Self {
+            autostart: false,
+            seasonal_effects_enabled: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -115,5 +126,30 @@ impl std::fmt::Display for ConfigError {
             Self::Io(e) => write!(f, "IO error: {e}"),
             Self::Serialize(e) => write!(f, "Serialize error: {e}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn seasonal_effects_enabled_by_default() {
+        assert!(Config::default().general.seasonal_effects_enabled);
+    }
+
+    #[test]
+    fn seasonal_effects_default_when_key_missing() {
+        let cfg: Config = toml::from_str("[general]\nautostart = true\n").unwrap();
+        assert!(cfg.general.autostart);
+        assert!(cfg.general.seasonal_effects_enabled);
+    }
+
+    #[test]
+    fn seasonal_effects_disabled_survives_round_trip() {
+        let mut cfg = Config::default();
+        cfg.general.seasonal_effects_enabled = false;
+        let parsed: Config = toml::from_str(&toml::to_string_pretty(&cfg).unwrap()).unwrap();
+        assert!(!parsed.general.seasonal_effects_enabled);
     }
 }

@@ -27,6 +27,7 @@ pub fn setup_application_ui(app: &Application) {
         warn!("Failed to apply startup migrations: {}", e);
     }
     info!("User configuration loaded");
+    crate::ui::seasonal::set_effects_enabled(config.borrow().general.seasonal_effects_enabled);
 
     // Persist configuration once on application shutdown to avoid IO during interaction.
     {
@@ -183,7 +184,7 @@ fn setup_ui_components(
 
     setup_autostart_toggle(builder, config.clone());
     setup_about_button(builder, window);
-    setup_seasonal_effects_toggle(builder, window);
+    setup_seasonal_effects_toggle(builder, config.clone());
 
     info!("All UI components successfully initialized from UI builder");
 
@@ -237,7 +238,7 @@ fn setup_about_button(builder: &Builder, window: &ApplicationWindow) {
     });
 }
 
-fn setup_seasonal_effects_toggle(builder: &Builder, _window: &ApplicationWindow) {
+fn setup_seasonal_effects_toggle(builder: &Builder, config: Rc<RefCell<Config>>) {
     use crate::ui::seasonal;
 
     let toggle = extract_widget::<gtk4::ToggleButton>(builder, "seasonal_effects_toggle");
@@ -249,6 +250,7 @@ fn setup_seasonal_effects_toggle(builder: &Builder, _window: &ApplicationWindow)
     toggle.connect_toggled(move |btn| {
         let enabled = btn.is_active();
         seasonal::set_effects_enabled(enabled);
+        config.borrow_mut().general.seasonal_effects_enabled = enabled;
         info!(
             "Seasonal effects {}",
             if enabled { "enabled" } else { "disabled" }

@@ -7,10 +7,12 @@
 //! - `gamescope`: Gamescope command generator
 //! - `containers_vms`: Docker, Podman, VirtualBox, KVM
 //! - `customization`: ZSH, themes, wallpapers
+//! - `ai_tools`: LM Studio, Claude, Alpaca
 //! - `kernel_schedulers`: Kernel Manager and SCX Scheduler (with subtabs)
 //! - `servicing`: System fixes and maintenance
 //! - `biometrics`: Fingerprint and facial recognition setup
 
+pub mod ai_tools;
 pub mod biometrics;
 pub mod containers_vms;
 pub mod customization;

@@ -8,6 +8,7 @@
     <file preprocess="xml-stripblanks" compressed="true">ui/tabs/drivers.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/tabs/customization.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/tabs/misc_tools.ui</file>
+    <file preprocess="xml-stripblanks" compressed="true">ui/tabs/ai_tools.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/tabs/gaming_tools.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/tabs/gamescope.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/tabs/containers_vms.ui</file>
@@ -31,6 +32,7 @@
     <file compressed="true">data/button_info/containers_vms.toml</file>
     <file compressed="true">data/button_info/customization.toml</file>
     <file compressed="true">data/button_info/misc_tools.toml</file>
+    <file compressed="true">data/button_info/ai_tools.toml</file>
     <file compressed="true">data/button_info/servicing.toml</file>
     <file compressed="true">data/button_info/biometrics.toml</file>
     <file compressed="true">data/button_info/gamescope.toml</file>
@@ -63,6 +65,7 @@
     <file compressed="true">icons/scalable/actions/trash-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/download-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/asterisk-symbolic.svg</file>
+    <file compressed="true">icons/scalable/actions/sparkles-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/gauge-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/gears-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/info-circle-symbolic.svg</file>

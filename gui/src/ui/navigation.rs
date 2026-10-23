@@ -54,13 +54,6 @@ pub const PAGES: &[PageConfig] = &[
         setup_handler: Some(pages::customization::setup_handlers),
     },
     PageConfig {
-        id: "misc_tools",
-        title: "Misc Tools",
-        icon: "asterisk-symbolic",
-        ui_resource: crate::config::resources::tabs::MISC_TOOLS,
-        setup_handler: Some(pages::misc_tools::setup_handlers),
-    },
-    PageConfig {
         id: "gaming_tools",
         title: "Gaming Tools",
         icon: "gamepad-symbolic",
@@ -89,6 +82,13 @@ pub const PAGES: &[PageConfig] = &[
         setup_handler: Some(pages::kernel_schedulers::setup_handlers),
     },
     PageConfig {
+        id: "ai_tools",
+        title: "A.I Tools",
+        icon: "sparkles-symbolic",
+        ui_resource: crate::config::resources::tabs::AI_TOOLS,
+        setup_handler: Some(pages::ai_tools::setup_handlers),
+    },
+    PageConfig {
         id: "biometrics",
         title: "Biometrics",
         icon: "fingerprint-symbolic",
@@ -101,6 +101,13 @@ pub const PAGES: &[PageConfig] = &[
         icon: "toolbox-symbolic",
         ui_resource: crate::config::resources::tabs::SERVICING_SYSTEM_TWEAKS,
         setup_handler: Some(pages::servicing::setup_handlers),
+    },
+    PageConfig {
+        id: "misc_tools",
+        title: "Misc Tools",
+        icon: "asterisk-symbolic",
+        ui_resource: crate::config::resources::tabs::MISC_TOOLS,
+        setup_handler: Some(pages::misc_tools::setup_handlers),
     },
 ];
 

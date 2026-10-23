@@ -123,11 +123,6 @@ pub trait SeasonalEffect {
 
 /// Apply any active seasonal effects to the window.
 pub fn apply_seasonal_effects(window: &ApplicationWindow) {
-    if !are_effects_enabled() {
-        info!("Seasonal effects are disabled");
-        return;
-    }
-
     info!("Checking for active seasonal effects...");
 
     let mouse_context = common::setup_mouse_tracking(window);
@@ -146,4 +141,8 @@ pub fn apply_seasonal_effects(window: &ApplicationWindow) {
             }
         }
     }
+
+    // Effects are built even when disabled so the toggle can turn them on later;
+    // this stops their timers until then.
+    set_effects_enabled(are_effects_enabled());
 }
