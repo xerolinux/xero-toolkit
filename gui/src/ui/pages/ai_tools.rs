@@ -6,7 +6,6 @@
 //! - Alpaca (Flatpak)
 
 use crate::config;
-use crate::core;
 use crate::ui::dialogs::selection::{
     show_selection_dialog, SelectionDialogConfig, SelectionOption, SelectionType,
 };
@@ -124,10 +123,6 @@ fn setup_claude(builder: &Builder, window: &ApplicationWindow) {
     button.connect_clicked(move |_| {
         info!("Claude button clicked");
 
-        let cli_installed = Path::new(&config::env::get().home)
-            .join(".local/bin/claude")
-            .exists();
-
         let dialog_config = SelectionDialogConfig::new(
             "Claude",
             "Select which Claude apps to install.",
@@ -138,13 +133,13 @@ fn setup_claude(builder: &Builder, window: &ApplicationWindow) {
             "claude_cli",
             "Claude Code (CLI)",
             "Terminal coding agent, installed with the official install script",
-            cli_installed,
+            false,
         ))
         .add_option(SelectionOption::new(
             "claude_desktop",
             "Claude Desktop",
             "Desktop chat app (claude-desktop from Chaotic-AUR)",
-            core::is_package_installed("claude-desktop"),
+            false,
         ))
         .confirm_label("Install");
 
