@@ -58,6 +58,21 @@
             <property name="spacing">16</property>
             <property name="halign">center</property>
             <child>
+              <object class="GtkButton" id="btn_artcraft_launcher">
+                <property name="label">ArtCraft Launcher</property>
+                <property name="width-request">220</property>
+                <property name="height-request">50</property>
+                <property name="css-classes">suggested-action pill</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">16</property>
+            <property name="halign">center</property>
+            <child>
               <object class="GtkButton" id="btn_efiboot_manager">
                 <property name="label">EFIBoot Manager</property>
                 <property name="width-request">220</property>

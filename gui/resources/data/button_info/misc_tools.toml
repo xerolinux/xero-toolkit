@@ -1,4 +1,14 @@
 [[button]]
+id = "btn_artcraft_launcher"
+title = "ArtCraft Launcher"
+summary = "Installs the latest ArtCraft Launcher AppImage from GitHub."
+details = [
+  "Downloads the newest x86_64 AppImage from the storytold/craft-launcher releases.",
+  "Verifies it against the release SHA256SUMS.txt before installing.",
+  "Installs to ~/.local/share/xpm/appimages/ and adds it to the app menu; xPackage Manager handles updates.",
+]
+
+[[button]]
 id = "btn_efiboot_manager"
 title = "EFIBoot Manager"
 summary = "Installs the EFIBoot Manager GUI from the XeroLinux repo."
