@@ -134,6 +134,21 @@
             </child>
           </object>
         </child>
+        <!-- Row 4: Epic Games Launcher -->
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">16</property>
+            <property name="halign">center</property>
+            <child>
+              <object class="GtkButton" id="btn_epic_games">
+                <property name="label">Official Epic Games Launcher (Preview/AUR)</property>
+                <property name="height-request">50</property>
+                <property name="css-classes">suggested-action pill</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>

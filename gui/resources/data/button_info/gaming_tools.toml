@@ -63,3 +63,12 @@ details = [
   "Creates/updates falcond group membership, sets profile directory permissions, and starts service.",
 ]
 caution = "Group and permission changes may require relogin before full access is applied."
+
+[[button]]
+id = "btn_epic_games"
+title = "Official Epic Games Launcher (Preview/AUR)"
+summary = "Installs the official Epic Games Launcher preview for Linux from the AUR."
+details = [
+  "Installs the AUR package epic-games-launcher-bin with your detected AUR helper (paru or yay).",
+]
+caution = "This is a preview build packaged by the AUR community, not by XeroLinux."

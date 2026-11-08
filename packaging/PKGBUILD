@@ -2,7 +2,7 @@
 # Maintainer: Steve C. <steve@techxero.com>
 
 pkgname=xero-toolkit
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=1
 pkgdesc="GTK4 GUI to manage XeroLinux specific tools and settings"
 arch=('x86_64')

@@ -6,6 +6,7 @@
 //! - Game launchers (Lutris, Heroic, Bottles)
 //! - Controller tools
 //! - Falcond gaming utility
+//! - Epic Games Launcher (AUR)
 
 use crate::ui::task_runner::{self, Command, CommandSequence};
 use crate::ui::utils::extract_widget;
@@ -23,6 +24,7 @@ pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &
     setup_bottles(page_builder, window);
     setup_controller(page_builder, window);
     setup_falcond(page_builder, window);
+    setup_epic_games(page_builder, window);
 }
 
 fn setup_steam_aio(builder: &Builder, window: &ApplicationWindow) {
@@ -329,5 +331,26 @@ fn setup_falcond(builder: &Builder, window: &ApplicationWindow) {
             .build();
 
         task_runner::run(window.upcast_ref(), commands, "Falcond Installation");
+    });
+}
+
+fn setup_epic_games(builder: &Builder, window: &ApplicationWindow) {
+    let button = extract_widget::<Button>(builder, "btn_epic_games");
+    let window = window.clone();
+
+    button.connect_clicked(move |_| {
+        info!("Epic Games Launcher button clicked");
+
+        let commands = CommandSequence::new()
+            .then(
+                Command::builder()
+                    .aur()
+                    .args(&["-S", "--noconfirm", "--needed", "epic-games-launcher-bin"])
+                    .description("Installing Epic Games Launcher from the AUR...")
+                    .build(),
+            )
+            .build();
+
+        task_runner::run(window.upcast_ref(), commands, "Epic Games Launcher Installation");
     });
 }
