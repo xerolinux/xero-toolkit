@@ -140,7 +140,7 @@
 
 .warning-pill {
     border-radius: 999px;
-    background: @error_bg_color;
+    background: #c01c28;
     color: white;
     padding: 14px 22px;
     font-weight: 500;

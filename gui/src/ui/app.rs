@@ -18,6 +18,12 @@ use std::rc::Rc;
 
 /// Initialize and set up main application UI.
 pub fn setup_application_ui(app: &Application) {
+    if let Some(window) = app.windows().first() {
+        info!("Already running, presenting existing window");
+        window.present();
+        return;
+    }
+
     info!("Initializing application components");
 
     setup_resources_and_theme();

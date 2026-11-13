@@ -12,9 +12,11 @@ use gtk4::glib;
 use gtk4::{ApplicationWindow, Box as GtkBox, Builder, Button, Image, Label};
 use log::{info, warn};
 use std::cell::RefCell;
+use std::path::Path;
 use std::rc::Rc;
 
 const SCHED_EXT_PATH: &str = "/sys/kernel/sched_ext";
+const PROC_SYS_KERNEL: &str = "/proc/sys/kernel";
 const SCHEDULER_GUIDE_URL: &str = "https://wiki.xerolinux.xyz/distro/#the-schedulers";
 
 /// Shared state for the scheduler page
@@ -22,6 +24,7 @@ const SCHEDULER_GUIDE_URL: &str = "https://wiki.xerolinux.xyz/distro/#the-schedu
 struct State {
     schedulers: Vec<String>,
     kernel_supported: bool,
+    builtin: &'static str,
     is_active: bool,
     selected_scheduler: Option<String>,
 }
@@ -51,8 +54,13 @@ pub fn setup_handlers(builder: &Builder, _main_builder: &Builder, window: &Appli
 fn init_kernel_support(builder: &Builder, state: &Rc<RefCell<State>>) {
     let version = run_command("uname", &["-r"]).unwrap_or_else(|| "Unknown".to_string());
     let supported = path_exists(SCHED_EXT_PATH);
+    let builtin = builtin_scheduler(Path::new(PROC_SYS_KERNEL));
 
-    state.borrow_mut().kernel_supported = supported;
+    {
+        let mut s = state.borrow_mut();
+        s.kernel_supported = supported;
+        s.builtin = builtin;
+    }
 
     let icon = extract_widget::<Image>(builder, "kernel_status_icon");
     let label = extract_widget::<Label>(builder, "kernel_version_label");
@@ -67,14 +75,10 @@ fn init_kernel_support(builder: &Builder, state: &Rc<RefCell<State>>) {
         icon.add_css_class("error");
         label.set_text(&format!("{} (no sched-ext)", version));
         label.add_css_class("warning");
-    }
 
-    // Hidden label for compatibility
-    extract_widget::<Label>(builder, "kernel_support_label").set_text(if supported {
-        "Supported"
-    } else {
-        "Not supported"
-    });
+        extract_widget::<GtkBox>(builder, "scheduler_notice_card").set_visible(false);
+        extract_widget::<GtkBox>(builder, "scheduler_unsupported_pill").set_visible(true);
+    }
 }
 
 fn setup_buttons(builder: &Builder, window: &ApplicationWindow, state: &Rc<RefCell<State>>) {
@@ -156,12 +160,16 @@ fn setup_buttons(builder: &Builder, window: &ApplicationWindow, state: &Rc<RefCe
 
     // Stop button
     let w = window.clone();
+    let s = Rc::clone(state);
     extract_widget::<Button>(builder, "btn_stop_scheduler").connect_clicked(move |_| {
         let wc = w.clone();
         show_warning_confirmation(
             w.upcast_ref(),
             "Stop Scheduler",
-            "Stop the current scheduler and fall back to EEVDF?",
+            &format!(
+                "Stop the current scheduler and fall back to {}?",
+                s.borrow().builtin
+            ),
             move || {
                 task_runner::run(
                     wc.upcast_ref(),
@@ -380,17 +388,13 @@ fn refresh_state(builder: &Builder, state: &Rc<RefCell<State>>, refresh_btn: Opt
                         .set_label(&humanize_name(selected));
                 }
 
-                // Update status display
-                update_status_labels(&builder, is_active, &name, &mode);
+                update_status_labels(&builder, &state.borrow(), &name, &mode);
 
-                // Update buttons and re-enable controls
-                row.set_sensitive(true);
-                mode_combo.set_sensitive(true);
-                persist.set_sensitive(true);
-
-                let can_switch = kernel_supported && !schedulers.is_empty();
-                switch_btn.set_sensitive(can_switch);
-                stop_btn.set_sensitive(is_active);
+                row.set_sensitive(kernel_supported);
+                mode_combo.set_sensitive(kernel_supported);
+                persist.set_sensitive(kernel_supported);
+                switch_btn.set_sensitive(kernel_supported && !schedulers.is_empty());
+                stop_btn.set_sensitive(kernel_supported && is_active);
 
                 // Update persistence state
                 persist.set_active(is_service_enabled("scx.service"));
@@ -420,12 +424,12 @@ fn refresh_state(builder: &Builder, state: &Rc<RefCell<State>>, refresh_btn: Opt
             Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                 warn!("Scheduler scan thread disconnected");
-                // Re-enable controls on failure
-                row.set_sensitive(true);
-                mode_combo.set_sensitive(true);
-                switch_btn.set_sensitive(true);
-                stop_btn.set_sensitive(true);
-                persist.set_sensitive(true);
+                let supported = state.borrow().kernel_supported;
+                row.set_sensitive(supported);
+                mode_combo.set_sensitive(supported);
+                switch_btn.set_sensitive(supported);
+                stop_btn.set_sensitive(supported);
+                persist.set_sensitive(supported);
 
                 if let Some(btn) = &btn_opt {
                     btn.set_sensitive(true);
@@ -449,21 +453,55 @@ fn update_status(builder: &Builder, state: &Rc<RefCell<State>>) {
     let (is_active, name, mode) = get_status();
     state.borrow_mut().is_active = is_active;
 
-    update_status_labels(builder, is_active, &name, &mode);
-    extract_widget::<Button>(builder, "btn_stop_scheduler").set_sensitive(is_active);
+    let s = state.borrow();
+    update_status_labels(builder, &s, &name, &mode);
+    extract_widget::<Button>(builder, "btn_stop_scheduler")
+        .set_sensitive(s.kernel_supported && is_active);
 }
 
-fn update_status_labels(builder: &Builder, is_active: bool, name: &str, mode: &str) {
+fn update_status_labels(builder: &Builder, state: &State, name: &str, mode: &str) {
     let active_label = extract_widget::<Label>(builder, "active_scheduler_label");
+    let scx_running = state.kernel_supported && state.is_active;
 
-    if is_active {
-        active_label.set_text(&format!("{} ({})", humanize_name(name), mode));
+    active_label.set_text(&active_scheduler_text(
+        state.kernel_supported,
+        state.is_active,
+        name,
+        mode,
+        state.builtin,
+    ));
+    if scx_running {
         active_label.remove_css_class("dim-label");
         active_label.add_css_class("accent");
     } else {
-        active_label.set_text("EEVDF (Default)");
         active_label.remove_css_class("accent");
         active_label.add_css_class("dim-label");
+    }
+}
+
+fn builtin_scheduler(proc_sys_kernel: &Path) -> &'static str {
+    if proc_sys_kernel.join("sched_bore").exists() {
+        "BORE"
+    } else if proc_sys_kernel.join("yield_type").exists() {
+        "PDS/BMQ"
+    } else {
+        "EEVDF"
+    }
+}
+
+/// scxctl reports scx_loader's requested scheduler even when it failed to attach,
+/// so it is only trusted when the kernel exposes sched-ext.
+fn active_scheduler_text(
+    kernel_supported: bool,
+    is_active: bool,
+    name: &str,
+    mode: &str,
+    builtin: &str,
+) -> String {
+    if kernel_supported && is_active {
+        format!("{} ({})", humanize_name(name), mode)
+    } else {
+        format!("{} (kernel built-in)", builtin)
     }
 }
 
@@ -631,5 +669,67 @@ fn humanize_name(name: &str) -> String {
     match chars.next() {
         None => String::new(),
         Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn proc_kernel_with(name: &str, files: &[&str]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "xero-sched-test-{}-{}",
+            name,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for f in files {
+            std::fs::write(dir.join(f), "1").unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn builtin_scheduler_detects_bore() {
+        let dir = proc_kernel_with("bore", &["sched_bore"]);
+        assert_eq!(builtin_scheduler(&dir), "BORE");
+    }
+
+    #[test]
+    fn builtin_scheduler_detects_project_c() {
+        let dir = proc_kernel_with("prjc", &["yield_type"]);
+        assert_eq!(builtin_scheduler(&dir), "PDS/BMQ");
+    }
+
+    #[test]
+    fn builtin_scheduler_defaults_to_eevdf() {
+        let dir = proc_kernel_with("eevdf", &[]);
+        assert_eq!(builtin_scheduler(&dir), "EEVDF");
+    }
+
+    #[test]
+    fn active_text_ignores_scxctl_when_kernel_unsupported() {
+        assert_eq!(
+            active_scheduler_text(false, true, "scx_cosmos", "LowLatency", "BORE"),
+            "BORE (kernel built-in)"
+        );
+    }
+
+    #[test]
+    fn active_text_shows_builtin_when_no_scx_running() {
+        assert_eq!(
+            active_scheduler_text(true, false, "", "", "EEVDF"),
+            "EEVDF (kernel built-in)"
+        );
+    }
+
+    #[test]
+    fn active_text_shows_running_scx_scheduler() {
+        assert_eq!(
+            active_scheduler_text(true, true, "scx_cosmos", "LowLatency", "EEVDF"),
+            "Cosmos (LowLatency)"
+        );
     }
 }

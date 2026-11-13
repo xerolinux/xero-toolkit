@@ -244,9 +244,34 @@
                       <object class="GtkBox">
                         <property name="orientation">vertical</property>
                         <property name="spacing">12</property>
+                        <child>
+                          <object class="GtkBox" id="scheduler_unsupported_pill">
+                            <property name="orientation">horizontal</property>
+                            <property name="spacing">10</property>
+                            <property name="halign">center</property>
+                            <property name="visible">false</property>
+                            <style>
+                              <class name="warning-pill"/>
+                            </style>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="icon-name">triangle-exclamation-symbolic</property>
+                                <property name="valign">center</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">This kernel does not support sched-ext, so SCX schedulers cannot be set. Boot a kernel with sched-ext support (such as linux or linux-cachyos).</property>
+                                <property name="wrap">true</property>
+                                <property name="justify">center</property>
+                                <property name="max-width-chars">70</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
                         <!-- Warning Banner -->
                         <child>
-                          <object class="GtkBox">
+                          <object class="GtkBox" id="scheduler_notice_card">
                             <property name="orientation">horizontal</property>
                             <property name="spacing">12</property>
                             <property name="margin-bottom">6</property>
@@ -328,12 +353,6 @@
                                         <property name="label">Unknown</property>
                                       </object>
                                     </child>
-                                    <!-- Hidden label for compatibility -->
-                                    <child>
-                                      <object class="GtkLabel" id="kernel_support_label">
-                                        <property name="visible">false</property>
-                                      </object>
-                                    </child>
                                   </object>
                                 </child>
                                 <child>
@@ -354,7 +373,7 @@
                                 <property name="subtitle">Current scheduler and profile</property>
                                 <child>
                                   <object class="GtkLabel" id="active_scheduler_label">
-                                    <property name="label">EEVDF (Default)</property>
+                                    <property name="label">EEVDF (kernel built-in)</property>
                                     <property name="valign">center</property>
                                     <style>
                                       <class name="dim-label"/>
