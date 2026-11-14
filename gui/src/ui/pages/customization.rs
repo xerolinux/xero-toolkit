@@ -151,6 +151,12 @@ fn setup_zsh_aio(builder: &Builder, window: &ApplicationWindow) {
                 .args(&[&user, "-s", "/bin/zsh"])
                 .description("Setting ZSH as default shell...")
                 .build())
+            .then(Command::builder()
+                .normal()
+                .program("sh")
+                .args(&["-c", &zshrc_gh_plugin_script(&home)])
+                .description("Switching Oh My Zsh github plugin to gh...")
+                .build())
             .build();
 
         task_runner::run(
@@ -159,6 +165,11 @@ fn setup_zsh_aio(builder: &Builder, window: &ApplicationWindow) {
             "ZSH All-in-One Setup",
         );
     });
+}
+
+/// Oh My Zsh deprecated the `github` plugin in favour of `gh`.
+fn zshrc_gh_plugin_script(home: &str) -> String {
+    format!(r"sed -i '/^plugins=(/s/\bgithub\b/gh/' {}/.zshrc", home)
 }
 
 fn setup_save_desktop(builder: &Builder, window: &ApplicationWindow) {
@@ -321,4 +332,33 @@ fn setup_config_reset(builder: &Builder, window: &ApplicationWindow) {
             },
         );
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zshrc_gh_plugin_swaps_only_github_plugin() {
+        let dir = std::env::temp_dir().join(format!("xero-zshrc-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let zshrc = dir.join(".zshrc");
+        std::fs::write(
+            &zshrc,
+            "# github comment stays\nplugins=(git emoji github jump)\nZSH=github\n",
+        )
+        .unwrap();
+
+        let status = std::process::Command::new("sh")
+            .args(["-c", &zshrc_gh_plugin_script(dir.to_str().unwrap())])
+            .status()
+            .unwrap();
+
+        assert!(status.success());
+        assert_eq!(
+            std::fs::read_to_string(&zshrc).unwrap(),
+            "# github comment stays\nplugins=(git emoji gh jump)\nZSH=github\n"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
