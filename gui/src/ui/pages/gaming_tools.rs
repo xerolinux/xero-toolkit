@@ -13,6 +13,9 @@ use crate::ui::utils::extract_widget;
 use gtk4::prelude::*;
 use gtk4::{ApplicationWindow, Builder, Button};
 use log::info;
+use std::path::Path;
+
+const STALE_WINE_ICON: &str = "/usr/share/icons/scalable/apps/wine.svg";
 
 /// Set up all button handlers for the gaming tools page.
 pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &ApplicationWindow) {
@@ -34,7 +37,11 @@ fn setup_steam_aio(builder: &Builder, window: &ApplicationWindow) {
     button.connect_clicked(move |_| {
         info!("Steam AiO button clicked");
 
-        let commands = CommandSequence::new()
+        let mut commands = CommandSequence::new();
+        if let Some(cleanup) = wine_icon_cleanup(Path::new(STALE_WINE_ICON)) {
+            commands = commands.then(cleanup);
+        }
+        let commands = commands
             .then(
                 Command::builder()
                     .aur()
@@ -102,6 +109,17 @@ fn setup_steam_aio(builder: &Builder, window: &ApplicationWindow) {
 
         task_runner::run(window.upcast_ref(), commands, "Steam AiO Installation");
     });
+}
+
+fn wine_icon_cleanup(icon: &Path) -> Option<Command> {
+    icon.exists().then(|| {
+        Command::builder()
+            .privileged()
+            .program("rm")
+            .args(&["-f", &icon.display().to_string()])
+            .description("Removing conflicting wine icon...")
+            .build()
+    })
 }
 
 fn setup_lact_oc(builder: &Builder, window: &ApplicationWindow) {
@@ -353,4 +371,29 @@ fn setup_epic_games(builder: &Builder, window: &ApplicationWindow) {
 
         task_runner::run(window.upcast_ref(), commands, "Epic Games Launcher Installation");
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wine_icon_cleanup_removes_existing_icon() {
+        let dir = std::env::temp_dir().join(format!("xero-wine-icon-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let icon = dir.join("wine.svg");
+        std::fs::write(&icon, "<svg/>").unwrap();
+
+        let cmd = wine_icon_cleanup(&icon).expect("cleanup step for existing icon");
+        assert_eq!(cmd.program, "rm");
+        assert_eq!(cmd.args, vec!["-f".to_string(), icon.display().to_string()]);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn wine_icon_cleanup_skips_missing_icon() {
+        let missing = std::env::temp_dir().join("xero-wine-icon-missing/wine.svg");
+        assert!(wine_icon_cleanup(&missing).is_none());
+    }
 }
