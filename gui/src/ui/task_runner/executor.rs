@@ -131,6 +131,9 @@ pub fn execute_commands(
 
     if index >= commands.len() {
         finalize_execution(&widgets, true, super::SUCCESS_MESSAGE);
+        if let Some(notice) = &widgets.success_notice {
+            crate::ui::dialogs::error::show_notice(&widgets.window, "Almost Done", notice);
+        }
         return;
     }
 

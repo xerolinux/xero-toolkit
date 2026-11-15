@@ -91,6 +91,7 @@ use widgets::{TaskItem, TaskRunnerWidgets};
 #[derive(Debug, Default)]
 pub struct CommandSequence {
     pub(super) commands: Vec<Command>,
+    pub(super) success_notice: Option<String>,
 }
 
 impl CommandSequence {
@@ -98,6 +99,7 @@ impl CommandSequence {
     pub fn new() -> Self {
         Self {
             commands: Vec::new(),
+            success_notice: None,
         }
     }
 
@@ -106,6 +108,12 @@ impl CommandSequence {
     /// Can be chained to add multiple commands in order.
     pub fn then(mut self, command: Command) -> Self {
         self.commands.push(command);
+        self
+    }
+
+    /// Show `message` in a popup once every command has succeeded.
+    pub fn on_success(mut self, message: &str) -> Self {
+        self.success_notice = Some(message.to_string());
         self
     }
 
@@ -214,7 +222,7 @@ pub fn run(parent: &Window, commands: CommandSequence, title: &str) {
     // Initialize output buffer
     output_text_buffer.set_text("Command outputs will appear here as tasks execute...\n\n");
 
-    let widgets = Rc::new(TaskRunnerWidgets::new(
+    let mut widgets = TaskRunnerWidgets::new(
         window.clone(),
         title_label,
         task_list_container,
@@ -226,7 +234,9 @@ pub fn run(parent: &Window, commands: CommandSequence, title: &str) {
         sidebar_revealer,
         output_text_view,
         output_text_buffer,
-    ));
+    );
+    widgets.success_notice = commands.success_notice;
+    let widgets = Rc::new(widgets);
 
     // Setup sidebar toggle binding and initialize collapsed
     widgets.setup_sidebar_toggle();
@@ -315,4 +325,20 @@ pub fn run(parent: &Window, commands: CommandSequence, title: &str) {
 
     // Start executing commands
     executor::execute_commands(widgets, commands, 0, cancelled, current_pid);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sequence_has_no_success_notice_by_default() {
+        assert_eq!(CommandSequence::new().success_notice, None);
+    }
+
+    #[test]
+    fn on_success_sets_success_notice() {
+        let seq = CommandSequence::new().on_success("Have fun !");
+        assert_eq!(seq.success_notice.as_deref(), Some("Have fun !"));
+    }
 }

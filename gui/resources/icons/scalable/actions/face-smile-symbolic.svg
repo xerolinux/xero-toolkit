@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <path fill="currentColor" fill-rule="evenodd" d="M320 40a280 280 0 1 0 0 560a280 280 0 1 0 0-560zM320 92a228 228 0 1 1 0 456a228 228 0 1 1 0-456z"/>
+  <circle fill="currentColor" cx="232" cy="256" r="36"/>
+  <circle fill="currentColor" cx="408" cy="256" r="36"/>
+  <path fill="none" stroke="currentColor" stroke-width="44" stroke-linecap="round" d="M196 368Q320 492 444 368"/>
+</svg>

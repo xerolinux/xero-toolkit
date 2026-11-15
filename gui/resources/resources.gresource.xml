@@ -24,6 +24,7 @@
     <file preprocess="xml-stripblanks" compressed="true">ui/dialogs/about_dialog.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/dialogs/button_info_dialog.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/dialogs/warning_dialog.ui</file>
+    <file preprocess="xml-stripblanks" compressed="true">ui/dialogs/notice_dialog.ui</file>
     <file preprocess="xml-stripblanks" compressed="true">ui/dialogs/scheduler_selection_dialog.ui</file>
     <!-- Button info metadata -->
     <file compressed="true">data/button_info/main_page.toml</file>
@@ -41,6 +42,7 @@
     <file compressed="true">css/style.css</file>
     <!-- Icons -->
     <file compressed="true">icons/scalable/actions/brush-symbolic.svg</file>
+    <file compressed="true">icons/scalable/actions/face-smile-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/discord-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/youtube-symbolic.svg</file>
     <file compressed="true">icons/scalable/actions/coffee-symbolic.svg</file>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="adw" version="1.0"/>
+  <object class="AdwWindow" id="notice_dialog">
+    <property name="title">Xero Toolkit</property>
+    <property name="modal">true</property>
+    <property name="resizable">false</property>
+    <style>
+      <class name="notice-dialog"/>
+    </style>
+    <property name="content">
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">16</property>
+        <property name="margin-top">32</property>
+        <property name="margin-bottom">28</property>
+        <property name="margin-start">32</property>
+        <property name="margin-end">32</property>
+        <child>
+          <object class="GtkImage">
+            <property name="icon-name">face-smile-symbolic</property>
+            <property name="pixel-size">72</property>
+            <property name="halign">center</property>
+            <style>
+              <class name="notice-smiley"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="notice_heading">
+            <property name="halign">center</property>
+            <style>
+              <class name="title-2"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="notice_message">
+            <property name="justify">center</property>
+            <property name="halign">center</property>
+            <style>
+              <class name="dim-label"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="notice_ok_button">
+            <property name="label">OK</property>
+            <property name="width-request">140</property>
+            <property name="height-request">44</property>
+            <property name="halign">center</property>
+            <property name="margin-top">8</property>
+            <style>
+              <class name="suggested-action"/>
+              <class name="pill"/>
+            </style>
+          </object>
+        </child>
+      </object>
+    </property>
+  </object>
+</interface>

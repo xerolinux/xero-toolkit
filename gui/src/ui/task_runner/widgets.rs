@@ -25,6 +25,7 @@ pub struct TaskRunnerWidgets {
     pub sidebar_revealer: Revealer,
     pub output_text_view: TextView,
     pub output_text_buffer: TextBuffer,
+    pub success_notice: Option<String>,
 }
 
 impl TaskRunnerWidgets {
@@ -55,6 +56,7 @@ impl TaskRunnerWidgets {
             sidebar_revealer,
             output_text_view,
             output_text_buffer,
+            success_notice: None,
         };
 
         // Set up color tags for output

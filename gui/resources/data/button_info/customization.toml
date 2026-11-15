@@ -54,3 +54,15 @@ details = [
   "Creates timestamped ~/.config backup before copying fresh defaults.",
 ]
 caution = "This intentionally replaces your current home config and triggers immediate reboot."
+
+[[button]]
+id = "btn_punchi_dock"
+title = "Punchi Dock Remastered"
+summary = "Builds and installs the Punchi Dock Remastered Plasma widget from source."
+details = [
+  "Installs the build dependencies listed in the project README with pacman.",
+  "Clones github.com/PunchiSoft/punchi-dock-remastered and runs scripts-user/setup.sh --install --no-restart.",
+  "Deletes the cloned repo afterwards, even if the build fails.",
+  "Remove your current Plasma dock, then add Punchi Dock Remastered through Plasma's Add Widgets interface.",
+]
+caution = "Third-party widget built from its latest source; if Plasma later updates its libraries, run this again to rebuild."

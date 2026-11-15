@@ -7,6 +7,7 @@
 //! - Plymouth Manager
 //! - Update Layan Theme
 //! - Config/Rice reset
+//! - Punchi Dock Remastered
 
 use crate::ui::dialogs::terminal;
 use crate::ui::task_runner::{self, Command, CommandSequence};
@@ -14,6 +15,41 @@ use crate::ui::utils::extract_widget;
 use gtk4::prelude::*;
 use gtk4::{ApplicationWindow, Builder, Button};
 use log::info;
+
+const PUNCHI_DOCK_REPO: &str = "https://github.com/PunchiSoft/punchi-dock-remastered.git";
+
+/// Arch build dependencies listed in the Punchi Dock README; its setup script
+/// cannot prompt for them without a terminal.
+const PUNCHI_DOCK_BUILD_DEPS: &[&str] = &[
+    "base-devel",
+    "binutils",
+    "cmake",
+    "extra-cmake-modules",
+    "gettext",
+    "git",
+    "pkgconf",
+    "qt6-base",
+    "qt6-declarative",
+    "qt6-shadertools",
+    "kconfig",
+    "kcoreaddons",
+    "kglobalaccel",
+    "ki18n",
+    "kjobwidgets",
+    "kio",
+    "kpackage",
+    "kservice",
+    "kwindowsystem",
+    "libplasma",
+    "plasma-workspace",
+    "plasma-activities",
+    "plasma-activities-stats",
+    "libpipewire",
+    "unzip",
+    "zip",
+];
+
+const PUNCHI_DOCK_SETUP_INFO: &str = "Remove current Plasma Dock then add Punchi Dock Remastered\nthrough Plasma's Add Widgets interface. Have fun !";
 
 /// Set up all button handlers for the customization page.
 pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &ApplicationWindow) {
@@ -24,6 +60,7 @@ pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &
     setup_plymouth_manager(page_builder, window);
     setup_layan_patch(page_builder, window);
     setup_config_reset(page_builder, window);
+    setup_punchi_dock(page_builder, window);
 }
 
 fn setup_zsh_aio(builder: &Builder, window: &ApplicationWindow) {
@@ -170,6 +207,55 @@ fn setup_zsh_aio(builder: &Builder, window: &ApplicationWindow) {
 /// Oh My Zsh deprecated the `github` plugin in favour of `gh`.
 fn zshrc_gh_plugin_script(home: &str) -> String {
     format!(r"sed -i '/^plugins=(/s/\bgithub\b/gh/' {}/.zshrc", home)
+}
+
+fn punchi_dock_script(repo_url: &str) -> String {
+    format!(
+        r#"set -e
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+git clone --depth 1 '{repo_url}' "$tmp/punchi-dock-remastered"
+cd "$tmp/punchi-dock-remastered"
+./scripts-user/setup.sh --install --no-restart"#
+    )
+}
+
+fn setup_punchi_dock(builder: &Builder, window: &ApplicationWindow) {
+    let button = extract_widget::<Button>(builder, "btn_punchi_dock");
+    let window = window.clone();
+
+    button.connect_clicked(move |_| {
+        info!("Punchi Dock Remastered button clicked");
+
+        let mut pacman_args = vec!["-S", "--needed", "--noconfirm"];
+        pacman_args.extend_from_slice(PUNCHI_DOCK_BUILD_DEPS);
+
+        let commands = CommandSequence::new()
+            .then(
+                Command::builder()
+                    .privileged()
+                    .program("pacman")
+                    .args(&pacman_args)
+                    .description("Installing Punchi Dock build dependencies...")
+                    .build(),
+            )
+            .then(
+                Command::builder()
+                    .normal()
+                    .program("bash")
+                    .args(&["-c", &punchi_dock_script(PUNCHI_DOCK_REPO)])
+                    .description("Building and installing Punchi Dock Remastered...")
+                    .build(),
+            )
+            .on_success(PUNCHI_DOCK_SETUP_INFO)
+            .build();
+
+        task_runner::run(
+            window.upcast_ref(),
+            commands,
+            "Punchi Dock Remastered Installation",
+        );
+    });
 }
 
 fn setup_save_desktop(builder: &Builder, window: &ApplicationWindow) {
@@ -337,6 +423,67 @@ fn setup_config_reset(builder: &Builder, window: &ApplicationWindow) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fake_punchi_repo(root: &std::path::Path, setup_body: &str) -> String {
+        let repo = root.join("repo");
+        std::fs::create_dir_all(repo.join("scripts-user")).unwrap();
+        let setup = repo.join("scripts-user/setup.sh");
+        std::fs::write(&setup, format!("#!/bin/sh\n{setup_body}\n")).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&setup, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let git = |args: &[&str]| {
+            assert!(std::process::Command::new("git")
+                .args(["-C", repo.to_str().unwrap(), "-c", "user.name=t", "-c", "user.email=t@t"])
+                .args(args)
+                .output()
+                .unwrap()
+                .status
+                .success());
+        };
+        git(&["init", "-q"]);
+        git(&["add", "."]);
+        git(&["commit", "-qm", "init"]);
+        format!("file://{}", repo.display())
+    }
+
+    #[test]
+    fn punchi_dock_script_runs_setup_and_removes_clone() {
+        let root = std::env::temp_dir().join(format!("xero-punchi-ok-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let marker = root.join("marker");
+        let url = fake_punchi_repo(&root, &format!("echo \"$PWD $*\" > {}", marker.display()));
+
+        let status = std::process::Command::new("bash")
+            .args(["-c", &punchi_dock_script(&url)])
+            .status()
+            .unwrap();
+
+        assert!(status.success());
+        let recorded = std::fs::read_to_string(&marker).unwrap();
+        let (clone_dir, args) = recorded.trim().split_once(' ').unwrap();
+        assert_eq!(args, "--install --no-restart");
+        assert!(clone_dir.ends_with("/punchi-dock-remastered"));
+        assert!(!std::path::Path::new(clone_dir).exists());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn punchi_dock_script_fails_and_cleans_up_when_setup_fails() {
+        let root = std::env::temp_dir().join(format!("xero-punchi-fail-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let marker = root.join("marker");
+        let url = fake_punchi_repo(&root, &format!("echo \"$PWD\" > {}; exit 3", marker.display()));
+
+        let status = std::process::Command::new("bash")
+            .args(["-c", &punchi_dock_script(&url)])
+            .status()
+            .unwrap();
+
+        assert!(!status.success());
+        let clone_dir = std::fs::read_to_string(&marker).unwrap();
+        assert!(!std::path::Path::new(clone_dir.trim()).exists());
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn zshrc_gh_plugin_swaps_only_github_plugin() {
