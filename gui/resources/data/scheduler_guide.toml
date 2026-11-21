@@ -1,0 +1,110 @@
+# Scheduler descriptions come from each scheduler's README in github.com/sched-ext/scx.
+# Profile descriptions follow the arguments scx_loader applies (scxctl modes --show-args).
+
+[[scheduler]]
+id = "bpfland"
+name = "Bpfland"
+summary = "EEVDF-like scheduler that keeps interactive tasks responsive while CPU-heavy work runs beside them."
+best_for = "Gaming, live streaming, video playback and rendering alongside background work."
+
+[[scheduler]]
+id = "lavd"
+name = "LAVD"
+summary = "Latency-criticality Aware Virtual Deadline: measures how latency-critical each task is and schedules around it."
+best_for = "Gaming: built to improve interactivity and reduce stuttering."
+
+[[scheduler]]
+id = "cake"
+name = "Cake"
+summary = "Keeps no task waiting while a CPU sits free, keeps tasks near their warm cache, and keeps CPU time fair. Needs no tuning."
+best_for = "Games, and fine for everyday desktop use."
+
+[[scheduler]]
+id = "cosmos"
+name = "Cosmos"
+summary = "Lightweight scheduler that keeps tasks on the same CPU when it can, switching to a deadline policy under heavy load."
+best_for = "General purpose: adapts to both desktop and server workloads."
+
+[[scheduler]]
+id = "flash"
+name = "Flash"
+summary = "Earliest-deadline-first scheduler focused on fairness and predictable performance, even on overloaded systems."
+best_for = "Latency-sensitive work such as multimedia and real-time audio."
+
+[[scheduler]]
+id = "rustland"
+name = "Rustland"
+summary = "User-space scheduler written in Rust that favours interactive tasks over background CPU-heavy ones."
+best_for = "Gaming, video conferencing and live streaming."
+
+[[scheduler]]
+id = "rusty"
+name = "Rusty"
+summary = "Multi-domain hybrid scheduler: BPF handles each domain while Rust balances load between them. Highly tunable."
+best_for = "Flexible across CPU architectures and workloads."
+
+[[scheduler]]
+id = "p2dq"
+name = "P2DQ"
+summary = "General-purpose scheduler that balances tasks across caches and NUMA nodes with a pick-two algorithm."
+best_for = "General use, especially CPUs with several cache groups."
+
+[[scheduler]]
+id = "beerland"
+name = "Beerland"
+summary = "Locality-focused scheduler with a deadline-ordered queue per CPU; tasks move only when the system is busy."
+best_for = "Cache-intensive workloads and systems with many CPUs."
+
+[[scheduler]]
+id = "pandemonium"
+name = "Pandemonium"
+summary = "Measures what each task is owed in real time instead of sorting tasks into classes, with topology-aware placement."
+best_for = "Keeping wakeup latency low while the CPU is saturated."
+
+[[scheduler]]
+id = "flow"
+name = "Flow"
+summary = "Experimental knob-free scheduler that scores tasks by latency and keeps time slices short and bounded."
+best_for = "Audio editing, gaming with browser tabs open, and compiling or rendering."
+
+[[scheduler]]
+id = "mlfq"
+name = "MLFQ"
+summary = "Experimental multilevel feedback queue: tasks drop levels while they run and return to the top when they wake."
+best_for = "Audio editing, gaming with browser tabs open, and compiling or rendering."
+
+[[scheduler]]
+id = "tickless"
+name = "Tickless"
+summary = "Experimental server scheduler that routes scheduling through a few primary CPUs so the rest run without the scheduler tick."
+best_for = "Cloud, virtualization and high-performance computing."
+
+[[scheduler]]
+id = "forge"
+name = "Forge"
+summary = "Base scheduler meant to be customized and tuned by its own optimization tooling."
+best_for = "Experimentation and development, not everyday use."
+
+[[profile]]
+id = "auto"
+name = "Auto"
+summary = "Each scheduler's balanced default. Some adapt on their own, such as LAVD switching between power saving and performance based on load."
+best_for = "Most users; a safe default."
+
+[[profile]]
+id = "gaming"
+name = "Gaming"
+summary = "Favours performance and smooth frame pacing, for example LAVD's performance mode or shorter time slices on Cosmos."
+best_for = "Playing games."
+
+[[profile]]
+id = "lowlatency"
+name = "Low Latency"
+summary = "Most responsive setting: performance mode with short time slices, at the cost of some extra power use."
+best_for = "Audio production, streaming and anything where input delay matters."
+
+[[profile]]
+id = "powersave"
+name = "Power Save"
+summary = "Prefers power-efficient CPUs and longer time slices to cut power use and heat."
+best_for = "Laptops on battery and quiet, low-load systems."

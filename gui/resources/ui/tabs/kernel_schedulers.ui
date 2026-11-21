@@ -305,7 +305,7 @@
                         <!-- Wiki Banner -->
                         <child>
                           <object class="GtkButton" id="btn_scheduler_guide">
-                            <property name="tooltip-text">Open the XeroLinux Scheduler Wiki</property>
+                            <property name="tooltip-text">Explain each scheduler and profile</property>
                             <property name="halign">center</property>
                             <property name="css-classes">tip-banner-purple pill</property>
                             <property name="margin-bottom">2</property>
@@ -322,7 +322,7 @@
                                 </child>
                                 <child>
                                   <object class="GtkLabel">
-                                    <property name="label">Click to open the SCX Scheduler Wiki.</property>
+                                    <property name="label">Click to learn about each scheduler and profile.</property>
                                     <property name="wrap">true</property>
                                   </object>
                                 </child>

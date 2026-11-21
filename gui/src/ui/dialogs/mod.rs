@@ -12,6 +12,7 @@ pub mod about;
 pub mod button_info;
 pub mod download;
 pub mod error;
+pub mod scheduler_guide;
 pub mod selection;
 pub mod terminal;
 pub mod warning;

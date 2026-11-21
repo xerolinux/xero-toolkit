@@ -17,7 +17,6 @@ use std::rc::Rc;
 
 const SCHED_EXT_PATH: &str = "/sys/kernel/sched_ext";
 const PROC_SYS_KERNEL: &str = "/proc/sys/kernel";
-const SCHEDULER_GUIDE_URL: &str = "https://wiki.xerolinux.xyz/distro/#the-schedulers";
 
 /// Shared state for the scheduler page
 #[derive(Default)]
@@ -189,10 +188,9 @@ fn setup_buttons(builder: &Builder, window: &ApplicationWindow, state: &Rc<RefCe
         );
     });
 
-    extract_widget::<Button>(builder, "btn_scheduler_guide").connect_clicked(|_| {
-        if let Err(e) = crate::core::package::open_url(SCHEDULER_GUIDE_URL) {
-            warn!("Failed to open scheduler guide URL: {}", e);
-        }
+    let w = window.clone();
+    extract_widget::<Button>(builder, "btn_scheduler_guide").connect_clicked(move |_| {
+        crate::ui::dialogs::scheduler_guide::show_scheduler_guide(&w);
     });
 }
 
