@@ -82,7 +82,7 @@ fn is_gpt() -> bool {
 
 /// Total ESP size in bytes, or `None` if undeterminable - matching
 /// `preflight.sh`'s `detect_esp_size_bytes`. An undeterminable size must
-/// not block the button (same non-blocking convention as `secureboot.rs`).
+/// not block the button.
 fn esp_size_bytes() -> Option<u64> {
     let esp = find_esp_mountpoint()?;
     let esp_source = esp_source_device(esp)?;

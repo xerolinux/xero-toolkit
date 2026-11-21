@@ -6,7 +6,6 @@
 //! - `daemon`: Daemon management for xero-auth
 //! - `download`: File download functionality
 //! - `package`: Package and flatpak checking utilities
-//! - `secureboot`: SecureBoot state detection
 //! - `system_check`: System dependency and distribution validation
 
 pub mod aur;
@@ -15,12 +14,10 @@ pub mod bootloader;
 pub mod daemon;
 pub mod download;
 pub mod package;
-pub mod secureboot;
 pub mod system_check;
 
 // Re-export commonly used items
 pub use aur::get as aur_helper;
 pub use bootloader::limine_switch_availability;
 pub use package::{is_flatpak_installed, is_package_installed};
-pub use secureboot::secureboot_setup_availability;
 pub use system_check::{check_dependencies, get_distribution_name, show_dependency_error_dialog};

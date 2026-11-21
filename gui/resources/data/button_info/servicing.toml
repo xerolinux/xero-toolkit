@@ -80,12 +80,9 @@ details = [
 caution = "Irreversible. Requires UEFI, GPT, and a 1024MB+ EFI partition. Reboot required after."
 
 [[button]]
-id = "btn_secureboot_setup"
-title = "SecureBoot Setup"
-summary = "Installs xsb-gui if needed, then minimizes the toolkit and launches it."
+id = "btn_secureboot_guide"
+title = "SecureBoot Guide"
+summary = "Opens the XeroLinux wiki guide for setting up SecureBoot in your web browser."
 details = [
-  "Disabled once Limine is active or SecureBoot is enabled.",
-  "Shows a destructive-action warning before proceeding.",
-  "Installs xsb-gui via the AUR helper if it isn't already present.",
-  "Minimizes xero-toolkit and launches xsb-gui for SecureBoot setup.",
+  "Link: wiki.xerolinux.xyz/secure-boot/",
 ]

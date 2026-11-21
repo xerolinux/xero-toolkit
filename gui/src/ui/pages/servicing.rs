@@ -9,7 +9,7 @@
 //! - Update mirrorlist
 //! - Parallel downloads adjustment
 //! - Switch GRUB to Limine
-//! - SecureBoot setup (xsb-gui)
+//! - SecureBoot guide (XeroLinux wiki)
 
 use crate::core;
 use crate::ui::dialogs::selection::{
@@ -19,9 +19,10 @@ use crate::ui::dialogs::terminal;
 use crate::ui::task_runner::{self, Command, CommandSequence};
 use crate::ui::utils::extract_widget;
 use gtk4::prelude::*;
-use gtk4::{glib, ApplicationWindow, Builder};
+use gtk4::{ApplicationWindow, Builder};
 use log::{error, info};
-use std::process::{Command as StdCommand, Stdio};
+
+const SECUREBOOT_GUIDE_URL: &str = "https://wiki.xerolinux.xyz/secure-boot/";
 
 /// Set up all button handlers for the servicing/system tweaks page
 pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &ApplicationWindow) {
@@ -34,7 +35,7 @@ pub fn setup_handlers(page_builder: &Builder, _main_builder: &Builder, window: &
     setup_update_mirrorlist(page_builder, window);
     setup_parallel_downloads(page_builder, window);
     setup_switch_to_limine(page_builder, window);
-    setup_secureboot_setup(page_builder, window);
+    setup_secureboot_guide(page_builder);
 }
 
 fn setup_clr_pacman(page_builder: &Builder, window: &ApplicationWindow) {
@@ -342,75 +343,11 @@ fn setup_switch_to_limine(page_builder: &Builder, window: &ApplicationWindow) {
     });
 }
 
-fn setup_secureboot_setup(page_builder: &Builder, window: &ApplicationWindow) {
-    let btn_secureboot_setup = extract_widget::<gtk4::Button>(page_builder, "btn_secureboot_setup");
-
-    match core::secureboot_setup_availability() {
-        Ok(()) => {
-            btn_secureboot_setup.set_sensitive(true);
+fn setup_secureboot_guide(page_builder: &Builder) {
+    extract_widget::<gtk4::Button>(page_builder, "btn_secureboot_guide").connect_clicked(|_| {
+        info!("Servicing: SecureBoot Guide button clicked");
+        if let Err(e) = core::package::open_url(SECUREBOOT_GUIDE_URL) {
+            error!("Failed to open SecureBoot guide: {}", e);
         }
-        Err(reason) => {
-            btn_secureboot_setup.set_sensitive(false);
-            btn_secureboot_setup.set_tooltip_text(Some(reason));
-        }
-    }
-
-    use crate::ui::dialogs::warning::show_warning_confirmation_styled;
-
-    let window = window.clone();
-    btn_secureboot_setup.connect_clicked(move |_| {
-        info!("Servicing: SecureBoot Setup button clicked");
-
-        let window_clone = window.clone();
-        show_warning_confirmation_styled(
-            window.upcast_ref(),
-            "SecureBoot Setup",
-            "This will install &amp; launch SecureBoot tool. It's destructive. Know what you \
-            are doing. <b>PROCEED AT OWN RISK!</b>",
-            true,
-            move || {
-                if core::is_package_installed("xsb-gui") {
-                    launch_xsb_gui_and_minimize(&window_clone);
-                    return;
-                }
-
-                let commands = CommandSequence::new()
-                    .then(
-                        Command::builder()
-                            .aur()
-                            .args(&["-S", "--noconfirm", "--needed", "xsb-gui"])
-                            .description("Installing SecureBoot Setup tool...")
-                            .build(),
-                    )
-                    .build();
-
-                task_runner::run(window_clone.upcast_ref(), commands, "SecureBoot Setup");
-
-                let window_clone2 = window_clone.clone();
-                glib::timeout_add_seconds_local(1, move || {
-                    if task_runner::is_running() {
-                        return glib::ControlFlow::Continue;
-                    }
-                    if core::is_package_installed("xsb-gui") {
-                        launch_xsb_gui_and_minimize(&window_clone2);
-                    }
-                    glib::ControlFlow::Break
-                });
-            },
-        );
     });
-}
-
-fn launch_xsb_gui_and_minimize(window: &ApplicationWindow) {
-    info!("Launching xsb-gui...");
-    if let Err(e) = StdCommand::new("xsb-gui")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    {
-        error!("Failed to launch xsb-gui: {}", e);
-        return;
-    }
-    window.minimize();
 }

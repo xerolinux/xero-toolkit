@@ -134,7 +134,7 @@
             </child>
           </object>
         </child>
-        <!-- Row 4: Switch GRUB to Limine, SecureBoot Setup -->
+        <!-- Row 4: Switch GRUB to Limine, SecureBoot Guide -->
         <child>
           <object class="GtkBox">
             <property name="orientation">horizontal</property>
@@ -149,11 +149,28 @@
               </object>
             </child>
             <child>
-              <object class="GtkButton" id="btn_secureboot_setup">
-                <property name="label">SecureBoot Setup</property>
+              <object class="GtkButton" id="btn_secureboot_guide">
+                <property name="tooltip-text">Open the SecureBoot guide on the XeroLinux wiki</property>
                 <property name="width-request">200</property>
                 <property name="height-request">50</property>
                 <property name="css-classes">suggested-action pill</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="spacing">8</property>
+                    <property name="halign">center</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label">SecureBoot Guide</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">arrow-up-right-from-square-symbolic</property>
+                        <property name="pixel-size">14</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
             </child>
           </object>
